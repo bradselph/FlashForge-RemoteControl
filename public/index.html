@@ -381,6 +381,349 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Autocomplete dropdown */
+    .gcode-input { position: relative; }
+
+    .autocomplete-dropdown {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      margin-bottom: 4px;
+    }
+
+    .autocomplete-dropdown.visible { display: block; }
+
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.selected {
+      background: var(--accent);
+      color: white;
+    }
+
+    .autocomplete-item .cmd-code {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .autocomplete-item .cmd-desc {
+      color: var(--text-dim);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .autocomplete-item:hover .cmd-desc,
+    .autocomplete-item.selected .cmd-desc {
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* Command reference panel */
+    .cmd-ref-toggle {
+      font-size: 13px;
+      color: var(--accent);
+      cursor: pointer;
+      margin-top: 10px;
+      display: inline-block;
+    }
+
+    .cmd-ref-toggle:hover { text-decoration: underline; }
+
+    .cmd-ref-list {
+      display: none;
+      margin-top: 12px;
+      max-height: 250px;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .cmd-ref-list.visible { display: block; }
+
+    .cmd-ref-item {
+      padding: 6px 12px;
+      font-size: 13px;
+      display: flex;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .cmd-ref-item:last-child { border-bottom: none; }
+    .cmd-ref-item:hover { background: var(--surface2); }
+
+    .cmd-ref-item .code {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 55px;
+    }
+
+    .cmd-ref-item .desc { color: var(--text-dim); }
+    .cmd-ref-item .usage {
+      font-family: 'Consolas', 'Monaco', monospace;
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    /* Custom command buttons */
+    .custom-commands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .custom-cmd-btn {
+      position: relative;
+      padding: 10px 8px;
+      font-size: 13px;
+      border-radius: 6px;
+      text-align: center;
+      word-break: break-word;
+    }
+
+    .custom-cmd-btn .edit-x {
+      position: absolute;
+      top: 2px;
+      left: 6px;
+      font-size: 11px;
+      opacity: 0;
+      cursor: pointer;
+      color: var(--text-dim);
+      transition: opacity 0.2s;
+    }
+
+    .custom-cmd-btn .delete-x {
+      position: absolute;
+      top: 2px;
+      right: 6px;
+      font-size: 14px;
+      opacity: 0;
+      cursor: pointer;
+      color: var(--red);
+      transition: opacity 0.2s;
+    }
+
+    .custom-cmd-btn:hover .delete-x,
+    .custom-cmd-btn:hover .edit-x { opacity: 1; }
+
+    /* Modal overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: var(--text);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .modal label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+      margin-top: 12px;
+    }
+
+    .modal label:first-of-type { margin-top: 0; }
+
+    .modal input, .modal select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 14px;
+    }
+
+    .modal .btn-row {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    /* Camera card */
+    .camera-container {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .camera-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .camera-placeholder {
+      color: var(--text-dim);
+      text-align: center;
+      font-size: 14px;
+      padding: 20px;
+    }
+
+    .camera-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    .camera-controls input[type="text"] {
+      flex: 1;
+      font-size: 13px;
+      padding: 8px 12px;
+    }
+
+    /* Card header with actions */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .card-header h3 { margin-bottom: 0; }
+    .card-header-actions { display: flex; gap: 6px; }
+    .card-header-actions button {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* G-code 3D Viewer */
+    .gcode-viewer-wrap {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 400px;
+      overflow: hidden;
+    }
+    .gcode-viewer-wrap canvas { display: block; }
+    .gcode-dropzone {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: var(--text-dim);
+      gap: 8px;
+      z-index: 10;
+    }
+    .gcode-dropzone.has-model { display: none; }
+    .gcode-viewer-wrap.drag-over .gcode-dropzone {
+      display: flex;
+      background: rgba(79,140,255,0.1);
+      border: 2px dashed var(--accent);
+      z-index: 20;
+    }
+    .gcode-viewer-toolbar {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .gcode-viewer-toolbar input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .gcode-viewer-toolbar label { white-space: nowrap; cursor: pointer; }
+    .gcode-viewer-toolbar input[type="checkbox"] {
+      accent-color: var(--accent);
+      margin-right: 3px;
+      vertical-align: middle;
+    }
+
+    /* Camera native fullscreen */
+    .camera-container:fullscreen,
+    .camera-container:-webkit-full-screen {
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .camera-container:fullscreen img,
+    .camera-container:-webkit-full-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .camera-container:fullscreen .camera-placeholder,
+    .camera-container:-webkit-full-screen .camera-placeholder {
+      color: #888;
+    }
+
+    /* Temperature chart */
+    .temp-chart-wrap {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 180px;
+      overflow: hidden;
+    }
+    .temp-chart-wrap canvas { display: block; width: 100%; height: 100%; }
+    .temp-chart-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .legend-swatch {
+      display: inline-block;
+      width: 14px;
+      height: 3px;
+      margin-right: 4px;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -498,14 +841,88 @@
         </div>
       </div>
 
+      <!-- Camera Stream -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Camera</h3>
+          <div class="card-header-actions" id="camera-actions" style="display:none;">
+            <button class="secondary" onclick="openCameraFullscreen()">Fullscreen</button>
+            <button class="secondary" onclick="popOutCamera()">Pop Out</button>
+          </div>
+        </div>
+        <div class="camera-container" id="camera-container" ondblclick="if(cameraActive)openCameraFullscreen()">
+          <div class="camera-placeholder" id="camera-placeholder">
+            No camera detected<br>
+            <span style="font-size:12px;margin-top:4px;display:inline-block;">Enter a stream URL below or click Detect</span>
+          </div>
+          <img id="camera-stream" style="display:none;" alt="Camera stream">
+        </div>
+        <div class="camera-controls">
+          <input type="text" id="camera-url" placeholder="http://printer-ip:8080/?action=stream">
+          <button class="secondary" onclick="setCameraUrl()">Set</button>
+          <button class="secondary" onclick="detectCamera()">Detect</button>
+        </div>
+      </div>
+
+      <!-- Custom Commands -->
+      <div class="card">
+        <h3>Custom Commands</h3>
+        <div class="custom-commands-grid" id="custom-commands-grid"></div>
+        <button class="secondary" onclick="openAddCommandModal()" style="margin-top:12px;width:100%;padding:8px;">+ Add Command</button>
+      </div>
+
+      <!-- G-code 3D Viewer -->
+      <div class="card" style="grid-column: span 2;">
+        <div class="card-header">
+          <h3>G-code Viewer</h3>
+          <div class="card-header-actions">
+            <button class="secondary" id="load-current-btn" onclick="loadCurrentPrint()" style="display:none;">Load Current Print</button>
+            <button class="secondary" onclick="document.getElementById('gcode-file-input').click()">Open File</button>
+            <button class="secondary" onclick="resetViewerCamera()">Reset View</button>
+          </div>
+        </div>
+        <input type="file" id="gcode-file-input" accept=".gcode,.gco,.g" style="display:none;" onchange="handleGcodeFile(this.files[0])">
+        <div class="gcode-viewer-wrap" id="gcode-viewer-wrap"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="event.preventDefault();this.classList.remove('drag-over');handleGcodeFile(event.dataTransfer.files[0])">
+          <div class="gcode-dropzone" id="gcode-dropzone">
+            <div style="font-size:14px;font-weight:500;">Drop a .gcode file here to visualize</div>
+            <div style="font-size:12px;">or click Open File above</div>
+          </div>
+          <div id="gcode-viewer-canvas" style="width:100%;height:100%;"></div>
+        </div>
+        <div class="gcode-viewer-toolbar">
+          <span id="layer-display">--</span>
+          <input type="range" id="layer-slider" min="0" max="1" value="1" oninput="setVisibleLayers(parseInt(this.value))">
+          <label><input type="checkbox" id="follow-progress" checked> Follow print</label>
+        </div>
+      </div>
+
+      <!-- Temperature History -->
+      <div class="card" style="grid-column: span 2;">
+        <h3>Temperature History</h3>
+        <div class="temp-chart-wrap">
+          <canvas id="temp-chart"></canvas>
+        </div>
+        <div class="temp-chart-legend">
+          <span><span class="legend-swatch" style="background:var(--orange);"></span>Nozzle</span>
+          <span><span class="legend-swatch" style="background:var(--accent);"></span>Bed</span>
+          <span><span class="legend-swatch" style="background:var(--text-dim);border-bottom:1px dashed var(--text-dim);height:0;"></span>Targets (dashed)</span>
+        </div>
+      </div>
+
       <!-- G-code Console -->
       <div class="card" style="grid-column: span 2;">
         <h3>G-code Console</h3>
         <div class="gcode-log" id="gcode-log"></div>
         <div class="gcode-input">
-          <input type="text" id="gcode-input" placeholder="Enter G-code command (e.g. M105, G28, M115)..." onkeydown="if(event.key==='Enter')sendGcode()">
+          <div class="autocomplete-dropdown" id="autocomplete-dropdown"></div>
+          <input type="text" id="gcode-input" placeholder="Enter G-code command (e.g. M105, G28, M115)..." onkeydown="handleGcodeKeydown(event)" oninput="handleGcodeInput()" autocomplete="off">
           <button onclick="sendGcode()">Send</button>
         </div>
+        <span class="cmd-ref-toggle" onclick="toggleCommandRef()">Command Reference</span>
+        <div class="cmd-ref-list" id="cmd-ref-list"></div>
       </div>
 
       <!-- Files -->
@@ -516,6 +933,29 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Custom Command Modal -->
+<div class="modal-overlay" id="add-cmd-modal" style="display:none;" onclick="if(event.target===this)closeAddCommandModal()">
+  <div class="modal">
+    <h3 id="modal-title">Add Custom Command</h3>
+    <label>Button Label</label>
+    <input type="text" id="cmd-label" placeholder="e.g. Preheat PLA">
+    <label>G-code Command</label>
+    <input type="text" id="cmd-gcode" placeholder="e.g. M104 S200">
+    <label>Color</label>
+    <select id="cmd-color">
+      <option value="">Blue (default)</option>
+      <option value="secondary">Gray</option>
+      <option value="success">Green</option>
+      <option value="warning">Orange</option>
+      <option value="danger">Red</option>
+    </select>
+    <div class="btn-row">
+      <button class="secondary" onclick="closeAddCommandModal()">Cancel</button>
+      <button onclick="saveCustomCommand()">Save</button>
     </div>
   </div>
 </div>
@@ -563,6 +1003,8 @@ function onPrinterConnected(data) {
   document.getElementById('disconnect-btn').style.display = '';
   document.getElementById('discovery-panel').style.display = 'none';
   document.getElementById('dashboard').classList.add('visible');
+  // Auto-detect camera on connect
+  detectCamera();
 }
 
 function onPrinterDisconnected() {
@@ -683,6 +1125,16 @@ function updateStatus(s) {
   // LED state
   ledState = s.ledState === 1;
   document.getElementById('led-toggle').classList.toggle('on', ledState);
+
+  // Temperature history chart
+  recordTemperature(s);
+
+  // G-code viewer: update progress + detect current print file
+  updateGcodeProgress(s.progress || 0);
+  checkCurrentPrintForViewer(s);
+
+  // Print completion notification
+  checkPrintCompletion(s.state);
 }
 
 // ─── Controls ──────────────────────────────────────────────────
@@ -855,8 +1307,691 @@ function toast(message, type = 'info') {
   setTimeout(() => el.remove(), 3000);
 }
 
+// ─── G-code Command Reference ───────────────────────────────────
+const GCODE_COMMANDS = {
+  'G0':   { desc: 'Rapid Move',               usage: 'G0 X_ Y_ Z_ F_' },
+  'G1':   { desc: 'Linear Move',              usage: 'G1 X_ Y_ Z_ E_ F_' },
+  'G28':  { desc: 'Home All Axes',            usage: 'G28' },
+  'G90':  { desc: 'Absolute Positioning',     usage: 'G90' },
+  'G91':  { desc: 'Relative Positioning',     usage: 'G91' },
+  'G92':  { desc: 'Set Position',             usage: 'G92 X_ Y_ Z_ E_' },
+  'M17':  { desc: 'Enable Steppers',          usage: 'M17' },
+  'M18':  { desc: 'Disable Steppers',         usage: 'M18' },
+  'M20':  { desc: 'List SD Card Files',       usage: 'M20' },
+  'M23':  { desc: 'Select File',              usage: 'M23 0:/user/file.gcode' },
+  'M24':  { desc: 'Start / Resume Print',     usage: 'M24' },
+  'M25':  { desc: 'Pause Print',              usage: 'M25' },
+  'M26':  { desc: 'Cancel Print',             usage: 'M26' },
+  'M27':  { desc: 'Report Print Progress',    usage: 'M27' },
+  'M104': { desc: 'Set Nozzle Temp',          usage: 'M104 S<temp> T0' },
+  'M105': { desc: 'Report Temperatures',      usage: 'M105' },
+  'M106': { desc: 'Set Fan Speed',            usage: 'M106 S<0-255>' },
+  'M107': { desc: 'Fan Off',                  usage: 'M107' },
+  'M109': { desc: 'Wait for Nozzle Temp',     usage: 'M109 S<temp> T0' },
+  'M114': { desc: 'Get Current Position',     usage: 'M114' },
+  'M115': { desc: 'Get Firmware Info',        usage: 'M115' },
+  'M119': { desc: 'Get Machine Status',       usage: 'M119' },
+  'M140': { desc: 'Set Bed Temp',             usage: 'M140 S<temp>' },
+  'M146': { desc: 'Set LED Color (FF)',       usage: 'M146 r<0-255> g<0-255> b<0-255> F0' },
+  'M190': { desc: 'Wait for Bed Temp',        usage: 'M190 S<temp>' },
+  'M220': { desc: 'Set Speed Override %',     usage: 'M220 S<percent>' },
+  'M405': { desc: 'Filament Sensor On',       usage: 'M405' },
+  'M406': { desc: 'Filament Sensor Off',      usage: 'M406' },
+  'M650': { desc: 'Load Filament (FF)',       usage: 'M650' },
+  'M651': { desc: 'Unload Filament (FF)',     usage: 'M651' },
+  'M661': { desc: 'List Files (FF)',          usage: 'M661' },
+};
+
+let autocompleteIndex = -1;
+let autocompleteItems = [];
+
+function handleGcodeInput() {
+  const input = document.getElementById('gcode-input');
+  const dropdown = document.getElementById('autocomplete-dropdown');
+  const query = input.value.trim().toUpperCase();
+
+  if (!query) {
+    dropdown.classList.remove('visible');
+    return;
+  }
+
+  autocompleteItems = Object.entries(GCODE_COMMANDS)
+    .filter(([code, info]) => code.startsWith(query) || info.desc.toUpperCase().includes(query))
+    .slice(0, 8);
+
+  if (autocompleteItems.length === 0) {
+    dropdown.classList.remove('visible');
+    return;
+  }
+
+  autocompleteIndex = -1;
+  dropdown.innerHTML = autocompleteItems.map(([code, info], i) => `
+    <div class="autocomplete-item" onmousedown="selectAutocomplete(${i})">
+      <span class="cmd-code">${code}</span>
+      <span class="cmd-desc">${info.desc}</span>
+    </div>
+  `).join('');
+  dropdown.classList.add('visible');
+}
+
+function handleGcodeKeydown(event) {
+  const dropdown = document.getElementById('autocomplete-dropdown');
+  const isOpen = dropdown.classList.contains('visible');
+
+  if (event.key === 'Enter') {
+    if (isOpen && autocompleteIndex >= 0) {
+      selectAutocomplete(autocompleteIndex);
+      event.preventDefault();
+    } else {
+      sendGcode();
+    }
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    dropdown.classList.remove('visible');
+    return;
+  }
+
+  if (isOpen && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    event.preventDefault();
+    const items = dropdown.querySelectorAll('.autocomplete-item');
+    if (event.key === 'ArrowDown') {
+      autocompleteIndex = Math.min(autocompleteIndex + 1, items.length - 1);
+    } else {
+      autocompleteIndex = Math.max(autocompleteIndex - 1, 0);
+    }
+    items.forEach((el, i) => el.classList.toggle('selected', i === autocompleteIndex));
+    return;
+  }
+
+  if (event.key === 'Tab' && isOpen && autocompleteItems.length > 0) {
+    event.preventDefault();
+    selectAutocomplete(autocompleteIndex >= 0 ? autocompleteIndex : 0);
+  }
+}
+
+function selectAutocomplete(index) {
+  const [code, info] = autocompleteItems[index];
+  const input = document.getElementById('gcode-input');
+  input.value = info.usage || code;
+  document.getElementById('autocomplete-dropdown').classList.remove('visible');
+  input.focus();
+}
+
+function toggleCommandRef() {
+  const list = document.getElementById('cmd-ref-list');
+  const isVisible = list.classList.contains('visible');
+
+  if (!isVisible && list.children.length === 0) {
+    list.innerHTML = Object.entries(GCODE_COMMANDS).map(([code, info]) => `
+      <div class="cmd-ref-item" onclick="document.getElementById('gcode-input').value='${info.usage || code}';document.getElementById('gcode-input').focus();">
+        <span class="code">${code}</span>
+        <span class="desc">${info.desc} &mdash; <code>${info.usage}</code></span>
+      </div>
+    `).join('');
+  }
+
+  list.classList.toggle('visible');
+}
+
+// ─── Custom Commands ────────────────────────────────────────────
+let customCommands = JSON.parse(localStorage.getItem('ff-custom-commands') || '[]');
+let editingCommandIndex = -1;
+
+function renderCustomCommands() {
+  const grid = document.getElementById('custom-commands-grid');
+  if (customCommands.length === 0) {
+    grid.innerHTML = '<div style="color:var(--text-dim);font-size:13px;text-align:center;padding:12px;">No custom commands yet</div>';
+    return;
+  }
+
+  grid.innerHTML = customCommands.map((cmd, i) => `
+    <button class="custom-cmd-btn ${cmd.color || ''}" onclick="runCustomCommand(${i})" title="${cmd.gcode}">
+      ${cmd.label}
+      <span class="edit-x" onclick="event.stopPropagation();openAddCommandModal(${i})">edit</span>
+      <span class="delete-x" onclick="event.stopPropagation();deleteCustomCommand(${i})">x</span>
+    </button>
+  `).join('');
+}
+
+function runCustomCommand(index) {
+  const cmd = customCommands[index];
+  if (!cmd) return;
+  document.getElementById('gcode-input').value = cmd.gcode;
+  sendGcode();
+}
+
+function openAddCommandModal(index) {
+  editingCommandIndex = (index !== undefined) ? index : -1;
+  const modal = document.getElementById('add-cmd-modal');
+
+  if (editingCommandIndex >= 0) {
+    const cmd = customCommands[editingCommandIndex];
+    document.getElementById('modal-title').textContent = 'Edit Custom Command';
+    document.getElementById('cmd-label').value = cmd.label;
+    document.getElementById('cmd-gcode').value = cmd.gcode;
+    document.getElementById('cmd-color').value = cmd.color || '';
+  } else {
+    document.getElementById('modal-title').textContent = 'Add Custom Command';
+    document.getElementById('cmd-label').value = '';
+    document.getElementById('cmd-gcode').value = '';
+    document.getElementById('cmd-color').value = '';
+  }
+
+  modal.style.display = '';
+}
+
+function closeAddCommandModal() {
+  document.getElementById('add-cmd-modal').style.display = 'none';
+  editingCommandIndex = -1;
+}
+
+function saveCustomCommand() {
+  const label = document.getElementById('cmd-label').value.trim();
+  const gcode = document.getElementById('cmd-gcode').value.trim();
+  const color = document.getElementById('cmd-color').value;
+
+  if (!label || !gcode) {
+    toast('Label and command are required', 'error');
+    return;
+  }
+
+  const cmd = { label, gcode, color };
+
+  if (editingCommandIndex >= 0) {
+    customCommands[editingCommandIndex] = cmd;
+  } else {
+    customCommands.push(cmd);
+  }
+
+  localStorage.setItem('ff-custom-commands', JSON.stringify(customCommands));
+  renderCustomCommands();
+  closeAddCommandModal();
+  toast(editingCommandIndex >= 0 ? 'Command updated' : 'Command added', 'success');
+}
+
+function deleteCustomCommand(index) {
+  if (!confirm('Delete "' + customCommands[index].label + '"?')) return;
+  customCommands.splice(index, 1);
+  localStorage.setItem('ff-custom-commands', JSON.stringify(customCommands));
+  renderCustomCommands();
+}
+
+// ─── Camera ─────────────────────────────────────────────────────
+let cameraActive = false;
+
+function setCameraUrl() {
+  const url = document.getElementById('camera-url').value.trim();
+  if (!url) return toast('Enter a camera URL', 'error');
+  startCamera(url);
+}
+
+function startCamera(url) {
+  const img = document.getElementById('camera-stream');
+  const placeholder = document.getElementById('camera-placeholder');
+
+  // Show img immediately — MJPEG streams (multipart/x-mixed-replace) don't
+  // fire the onload event reliably since the image is never "complete".
+  placeholder.style.display = 'none';
+  img.style.display = '';
+  cameraActive = true;
+  document.getElementById('camera-actions').style.display = '';
+
+  img.onerror = () => {
+    placeholder.style.display = '';
+    img.style.display = 'none';
+    cameraActive = false;
+    placeholder.innerHTML = 'Failed to load camera stream<br><span style="font-size:12px;">Check the URL and ensure the camera is accessible</span>';
+  };
+
+  // Proxy through server to avoid CORS issues
+  img.src = '/api/camera/stream?url=' + encodeURIComponent(url) + '&t=' + Date.now();
+  document.getElementById('camera-url').value = url;
+
+  // Fallback: if no image data after 5s, treat as failed
+  setTimeout(() => {
+    if (img.naturalWidth === 0 && cameraActive) {
+      img.onerror();
+    }
+  }, 5000);
+}
+
+async function detectCamera() {
+  if (!printer) return toast('Connect to a printer first', 'error');
+  try {
+    const resp = await fetch('/api/camera/detect');
+    const data = await resp.json();
+    if (data.success && data.url) {
+      document.getElementById('camera-url').value = data.url;
+      startCamera(data.url);
+      toast('Camera detected', 'success');
+    } else {
+      toast('No camera detected at known endpoints', 'error');
+    }
+  } catch {
+    toast('Camera detection failed', 'error');
+  }
+}
+
+// ─── Temperature History Chart ──────────────────────────────────
+const tempHistory = [];
+const TEMP_HISTORY_MAX = 120; // 6 min at 3s polls
+
+function recordTemperature(s) {
+  tempHistory.push({
+    nozzle: s.nozzleTemp, nozzleTarget: s.nozzleTarget,
+    bed: s.bedTemp, bedTarget: s.bedTarget,
+  });
+  if (tempHistory.length > TEMP_HISTORY_MAX) tempHistory.shift();
+  drawTempChart();
+}
+
+function drawTempChart() {
+  const canvas = document.getElementById('temp-chart');
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+  const pad = { top: 8, right: 8, bottom: 20, left: 40 };
+  const pw = w - pad.left - pad.right, ph = h - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+  if (tempHistory.length < 2) {
+    ctx.fillStyle = '#8b90a5'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Collecting temperature data...', w / 2, h / 2);
+    return;
+  }
+
+  let maxT = 50;
+  for (const t of tempHistory) maxT = Math.max(maxT, t.nozzle, t.nozzleTarget, t.bed, t.bedTarget);
+  maxT = Math.ceil(maxT / 50) * 50 + 20;
+
+  // Grid
+  ctx.strokeStyle = '#1e2130'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + ph * i / 4;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
+    ctx.fillStyle = '#8b90a5'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxT - maxT * i / 4) + '\u00B0', pad.left - 4, y + 3);
+  }
+  const secs = tempHistory.length * 3;
+  ctx.fillStyle = '#8b90a5'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Last ' + (secs >= 60 ? Math.round(secs / 60) + 'm' : secs + 's'), w / 2, h - 2);
+
+  function plotLine(key, color, dash) {
+    ctx.strokeStyle = color; ctx.lineWidth = dash ? 1 : 2; ctx.setLineDash(dash ? [5, 4] : []);
+    ctx.beginPath();
+    for (let i = 0; i < tempHistory.length; i++) {
+      const x = pad.left + (i / (tempHistory.length - 1)) * pw;
+      const y = pad.top + ph * (1 - tempHistory[i][key] / maxT);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  plotLine('nozzleTarget', '#5a5e72', true);
+  plotLine('bedTarget', '#5a5e72', true);
+  plotLine('bed', '#4f8cff', false);
+  plotLine('nozzle', '#fb923c', false);
+}
+
+// ─── G-code 3D Viewer (Three.js lazy-loaded) ───────────────────
+let threeLoaded = false;
+let gcodeScene, gcodeCamera, gcodeRenderer, gcodeControls;
+let gcodeGroup = null;
+let gcodeLayers = [];
+let gcodeViewerReady = false;
+
+function loadThreeJs() {
+  return new Promise((resolve, reject) => {
+    if (threeLoaded) return resolve();
+    const s1 = document.createElement('script');
+    s1.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+      s2.onload = () => { threeLoaded = true; resolve(); };
+      s2.onerror = () => reject(new Error('Failed to load OrbitControls'));
+      document.head.appendChild(s2);
+    };
+    s1.onerror = () => reject(new Error('Failed to load Three.js'));
+    document.head.appendChild(s1);
+  });
+}
+
+function initGcodeViewer() {
+  const container = document.getElementById('gcode-viewer-canvas');
+  const w = container.clientWidth, h = container.clientHeight;
+  if (w === 0 || h === 0) return;
+
+  gcodeScene = new THREE.Scene();
+  gcodeScene.background = new THREE.Color(0x0f1117);
+
+  gcodeCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 10000);
+  gcodeCamera.position.set(200, 200, 200);
+
+  gcodeRenderer = new THREE.WebGLRenderer({ antialias: true });
+  gcodeRenderer.setSize(w, h);
+  gcodeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(gcodeRenderer.domElement);
+
+  gcodeControls = new THREE.OrbitControls(gcodeCamera, gcodeRenderer.domElement);
+  gcodeControls.enableDamping = true;
+  gcodeControls.dampingFactor = 0.12;
+
+  // Build plate grid
+  const grid = new THREE.GridHelper(220, 22, 0x2e3345, 0x1a1d27);
+  gcodeScene.add(grid);
+
+  gcodeScene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  gcodeViewerReady = true;
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    gcodeControls.update();
+    gcodeRenderer.render(gcodeScene, gcodeCamera);
+  })();
+
+  new ResizeObserver(() => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    gcodeCamera.aspect = w / h;
+    gcodeCamera.updateProjectionMatrix();
+    gcodeRenderer.setSize(w, h);
+  }).observe(container);
+}
+
+function parseGcode(text) {
+  const lines = text.split('\n');
+  const layers = [];
+  let layer = [];
+  let pos = { x: 0, y: 0, z: 0 };
+  let lastZ = -999;
+  let abs = true;
+
+  for (const raw of lines) {
+    const line = raw.split(';')[0].trim();
+    if (!line) continue;
+    const parts = line.split(/\s+/);
+    const cmd = parts[0].toUpperCase();
+
+    if (cmd === 'G90') { abs = true; continue; }
+    if (cmd === 'G91') { abs = false; continue; }
+    if (cmd === 'G92') {
+      for (let j = 1; j < parts.length; j++) {
+        const a = parts[j][0].toUpperCase(), v = parseFloat(parts[j].slice(1));
+        if (!isNaN(v)) { if (a === 'X') pos.x = v; if (a === 'Y') pos.y = v; if (a === 'Z') pos.z = v; }
+      }
+      continue;
+    }
+    if (cmd !== 'G0' && cmd !== 'G1') continue;
+
+    const prev = { ...pos };
+    let hasE = false;
+    for (let j = 1; j < parts.length; j++) {
+      const a = parts[j][0].toUpperCase(), v = parseFloat(parts[j].slice(1));
+      if (isNaN(v)) continue;
+      if (a === 'X') pos.x = abs ? v : pos.x + v;
+      if (a === 'Y') pos.y = abs ? v : pos.y + v;
+      if (a === 'Z') pos.z = abs ? v : pos.z + v;
+      if (a === 'E') hasE = true;
+    }
+
+    if (pos.z > lastZ + 0.01 && layer.length > 0) {
+      layers.push(new Float32Array(layer));
+      layer = [];
+    }
+    lastZ = pos.z;
+
+    if (hasE && cmd === 'G1' && (prev.x !== pos.x || prev.y !== pos.y)) {
+      layer.push(prev.x, prev.z, -prev.y, pos.x, pos.z, -pos.y);
+    }
+  }
+  if (layer.length > 0) layers.push(new Float32Array(layer));
+  return layers;
+}
+
+async function handleGcodeFile(file) {
+  if (!file) return;
+  const dz = document.getElementById('gcode-dropzone');
+  dz.textContent = 'Loading...';
+
+  try { await loadThreeJs(); } catch (e) {
+    toast('Could not load 3D library: ' + e.message, 'error');
+    dz.textContent = 'Failed to load 3D library';
+    return;
+  }
+  if (!gcodeViewerReady) initGcodeViewer();
+
+  const text = await file.text();
+  gcodeLayers = parseGcode(text);
+
+  dz.classList.add('has-model');
+  const slider = document.getElementById('layer-slider');
+  slider.max = gcodeLayers.length;
+  slider.value = gcodeLayers.length;
+  document.getElementById('layer-display').textContent = gcodeLayers.length + ' / ' + gcodeLayers.length + ' layers';
+
+  renderGcodeLayers(gcodeLayers.length);
+  fitViewerCamera();
+  toast(gcodeLayers.length + ' layers loaded from ' + file.name, 'success');
+}
+
+function renderGcodeLayers(count) {
+  if (!gcodeScene) return;
+  if (gcodeGroup) { gcodeScene.remove(gcodeGroup); gcodeGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+  gcodeGroup = new THREE.Group();
+  const total = gcodeLayers.length;
+  const progLayer = lastStatus ? Math.floor((lastStatus.progress / 100) * total) : total;
+
+  for (let i = 0; i < Math.min(count, total); i++) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(gcodeLayers[i], 3));
+
+    let color, opacity = 1;
+    if (i < progLayer) {
+      const t = i / total;
+      color = new THREE.Color().setHSL(0.55 - t * 0.35, 0.75, 0.55);
+    } else if (i === progLayer) {
+      color = new THREE.Color(0x4f8cff);
+    } else {
+      color = new THREE.Color(0x3a3f52); opacity = 0.15;
+    }
+
+    gcodeGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, opacity, transparent: opacity < 1 })));
+  }
+
+  const box = new THREE.Box3().setFromObject(gcodeGroup);
+  if (!box.isEmpty()) {
+    const c = box.getCenter(new THREE.Vector3());
+    gcodeGroup.position.x -= c.x;
+    gcodeGroup.position.z -= c.z;
+  }
+  gcodeScene.add(gcodeGroup);
+}
+
+function fitViewerCamera() {
+  if (!gcodeGroup) return;
+  const box = new THREE.Box3().setFromObject(gcodeGroup);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  const len = size.length();
+  gcodeCamera.position.set(len * 0.7, len * 0.55, len * 0.7);
+  gcodeControls.target.set(0, size.y / 3, 0);
+  gcodeControls.update();
+}
+
+function resetViewerCamera() {
+  if (gcodeGroup) fitViewerCamera();
+}
+
+function setVisibleLayers(n) {
+  const total = gcodeLayers.length;
+  if (total === 0) return;
+  document.getElementById('layer-display').textContent = n + ' / ' + total + ' layers';
+  document.getElementById('follow-progress').checked = false;
+  renderGcodeLayers(n);
+}
+
+function updateGcodeProgress(pct) {
+  if (!gcodeGroup || gcodeLayers.length === 0) return;
+  if (!document.getElementById('follow-progress').checked) return;
+  const total = gcodeLayers.length;
+  const progLayer = Math.floor((pct / 100) * total);
+
+  gcodeGroup.children.forEach((mesh, i) => {
+    if (i < progLayer) {
+      const t = i / total;
+      mesh.material.color.setHSL(0.55 - t * 0.35, 0.75, 0.55);
+      mesh.material.opacity = 1; mesh.material.transparent = false;
+    } else if (i === progLayer) {
+      mesh.material.color.set(0x4f8cff);
+      mesh.material.opacity = 1; mesh.material.transparent = false;
+    } else {
+      mesh.material.color.set(0x3a3f52);
+      mesh.material.opacity = 0.15; mesh.material.transparent = true;
+    }
+  });
+
+  const slider = document.getElementById('layer-slider');
+  const show = Math.min(progLayer + 1, total);
+  slider.value = show;
+  document.getElementById('layer-display').textContent = show + ' / ' + total + ' layers';
+}
+
+// ─── Camera Fullscreen / Pop-Out ────────────────────────────────
+function openCameraFullscreen() {
+  if (!cameraActive) return;
+  const el = document.getElementById('camera-container');
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+function popOutCamera() {
+  if (!cameraActive) return;
+  const url = document.getElementById('camera-url').value;
+  if (!url) return;
+  // Open the raw proxied MJPEG stream — browser renders it natively
+  const proxyUrl = '/api/camera/stream?url=' + encodeURIComponent(url);
+  const w = window.open(proxyUrl, 'ff_camera', 'width=800,height=600');
+  if (!w) toast('Pop-up blocked — allow pop-ups for this site', 'error');
+}
+
+// ─── Load Currently-Printing File into 3D Viewer ────────────────
+let trackedPrintFile = null;
+let autoLoadAttempted = false;
+
+async function loadCurrentPrint() {
+  const fileName = lastStatus?.currentFile;
+  if (!fileName) return toast('No file currently printing', 'error');
+
+  const dz = document.getElementById('gcode-dropzone');
+  dz.classList.remove('has-model');
+  dz.textContent = 'Downloading ' + fileName + '...';
+
+  try {
+    const resp = await fetch('/api/files/download?name=' + encodeURIComponent(fileName));
+    const ct = resp.headers.get('content-type') || '';
+
+    if (ct.includes('json')) {
+      const data = await resp.json();
+      dz.innerHTML = '<div style="font-size:14px;font-weight:500;">Could not download from printer</div>' +
+        '<div style="font-size:12px;">' + (data.error || '') + '</div>' +
+        '<div style="font-size:12px;margin-top:8px;">Drop your local copy of <b>' + fileName + '</b> here instead</div>';
+      return;
+    }
+
+    // Got the file content — parse and display
+    const text = await resp.text();
+    try { await loadThreeJs(); } catch (e) {
+      toast('Could not load 3D library: ' + e.message, 'error');
+      dz.textContent = 'Failed to load 3D library';
+      return;
+    }
+    if (!gcodeViewerReady) initGcodeViewer();
+
+    gcodeLayers = parseGcode(text);
+    dz.classList.add('has-model');
+    const slider = document.getElementById('layer-slider');
+    slider.max = gcodeLayers.length;
+    slider.value = gcodeLayers.length;
+    document.getElementById('layer-display').textContent = gcodeLayers.length + ' / ' + gcodeLayers.length + ' layers';
+    document.getElementById('follow-progress').checked = true;
+    renderGcodeLayers(gcodeLayers.length);
+    fitViewerCamera();
+    toast(gcodeLayers.length + ' layers loaded from printer', 'success');
+  } catch (err) {
+    dz.innerHTML = '<div style="font-size:14px;font-weight:500;">Download failed</div>' +
+      '<div style="font-size:12px;">Drop your local copy of <b>' + fileName + '</b> here instead</div>';
+  }
+}
+
+function checkCurrentPrintForViewer(s) {
+  const btn = document.getElementById('load-current-btn');
+  const dz = document.getElementById('gcode-dropzone');
+  const isPrinting = s.state === 'printing' || s.state === 'paused';
+
+  if (isPrinting && s.currentFile) {
+    // Show the Load Current Print button
+    btn.style.display = '';
+    btn.textContent = 'Load: ' + s.currentFile;
+
+    // Update dropzone hint when no model loaded
+    if (!dz.classList.contains('has-model')) {
+      dz.innerHTML = '<div style="font-size:14px;font-weight:500;">Printing: ' + s.currentFile + '</div>' +
+        '<div style="font-size:12px;">Click "Load: ' + s.currentFile + '" above or drop the file here</div>';
+    }
+
+    // Auto-download once per print job
+    if (s.currentFile !== trackedPrintFile) {
+      trackedPrintFile = s.currentFile;
+      autoLoadAttempted = false;
+    }
+    if (!autoLoadAttempted && gcodeLayers.length === 0) {
+      autoLoadAttempted = true;
+      loadCurrentPrint();
+    }
+  } else {
+    btn.style.display = 'none';
+    trackedPrintFile = null;
+    autoLoadAttempted = false;
+  }
+}
+
+// ─── Print Completion Notification ──────────────────────────────
+let prevPrintState = null;
+
+function checkPrintCompletion(state) {
+  if (prevPrintState === 'printing' && state === 'completed') {
+    toast('Print completed!', 'success');
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Print Complete', { body: lastStatus?.currentFile || 'Your print has finished' });
+    }
+    try {
+      const actx = new AudioContext();
+      function beep(freq, delay) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.connect(g); g.connect(actx.destination);
+        o.frequency.value = freq; g.gain.value = 0.25;
+        o.start(actx.currentTime + delay);
+        o.stop(actx.currentTime + delay + 0.2);
+      }
+      beep(800, 0); beep(1000, 0.3); beep(1200, 0.6);
+    } catch {}
+  }
+  prevPrintState = state;
+}
+
 // ─── Init ──────────────────────────────────────────────────────
+renderCustomCommands();
 connectWebSocket();
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
 </script>
 </body>
 </html>

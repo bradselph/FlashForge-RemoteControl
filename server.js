@@ -527,6 +527,113 @@ app.get('/api/files', async (req, res) => {
   }
 });
 
+// ─── File Download from Printer ───────────────────────────────
+
+app.get('/api/files/download', (req, res) => {
+  if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
+  const fileName = req.query.name;
+  if (!fileName) return res.json({ success: false, error: 'File name required' });
+
+  const ip = connectedPrinter.ip;
+
+  // Try HTTP API (port 8898) — only works on printers that expose it
+  if (connectedPrinter.hasHttpApi) {
+    const body = JSON.stringify({
+      serialNumber: connectedPrinter.serialNumber || '',
+      checkCode: '0',
+      fileName: fileName.startsWith('0:/') ? fileName : '0:/user/' + fileName,
+    });
+
+    const proxyReq = http.request({
+      hostname: ip,
+      port: 8898,
+      path: '/downloadGcode',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 60000,
+    }, (proxyRes) => {
+      const ct = proxyRes.headers['content-type'] || '';
+      if (proxyRes.statusCode === 200 && !ct.includes('json')) {
+        res.set('Content-Type', 'text/plain');
+        proxyRes.pipe(res);
+      } else {
+        let data = '';
+        proxyRes.on('data', c => data += c);
+        proxyRes.on('end', () => {
+          res.json({ success: false, error: 'Printer error: ' + data.substring(0, 200) });
+        });
+      }
+    });
+
+    proxyReq.on('error', (err) => {
+      if (!res.headersSent) {
+        res.json({ success: false, error: 'Download failed: ' + err.message });
+      }
+    });
+
+    proxyReq.write(body);
+    proxyReq.end();
+    return;
+  }
+
+  // No HTTP API — can't download via TCP protocol
+  res.json({ success: false, error: 'HTTP API not available on this printer. Load the .gcode file from your computer.' });
+});
+
+// ─── Camera Proxy ─────────────────────────────────────────────
+
+app.get('/api/camera/detect', async (req, res) => {
+  if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
+  const ip = connectedPrinter.ip;
+  const candidates = [
+    `http://${ip}:8080/?action=stream`,
+    `http://${ip}:8080/?action=snapshot`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (r.ok) {
+        // Prefer the stream URL if snapshot worked (same port, different action)
+        const streamUrl = `http://${ip}:8080/?action=stream`;
+        return res.json({ success: true, url: streamUrl });
+      }
+    } catch {}
+  }
+
+  res.json({ success: false, error: 'No camera found at known endpoints' });
+});
+
+app.get('/api/camera/stream', (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).send('URL parameter required');
+
+  // Security: only allow proxying to the connected printer's IP
+  try {
+    const parsed = new URL(url);
+    if (!connectedPrinter || parsed.hostname !== connectedPrinter.ip) {
+      return res.status(403).send('URL must point to the connected printer');
+    }
+  } catch {
+    return res.status(400).send('Invalid URL');
+  }
+
+  const proxyReq = http.get(url, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, {
+      'Content-Type': proxyRes.headers['content-type'] || 'multipart/x-mixed-replace',
+      'Cache-Control': 'no-cache, no-store',
+      'Connection': 'keep-alive',
+    });
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', () => {
+    if (!res.headersSent) res.status(502).send('Camera connection failed');
+  });
+
+  req.on('close', () => proxyReq.destroy());
+});
+
 // Serve main page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
