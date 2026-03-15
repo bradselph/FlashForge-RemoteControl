@@ -55,6 +55,44 @@ Each `parseM*()` function uses regex to extract structured data from raw TCP tex
 - UDP discovery multicast group: `225.0.0.9`
 - Modern discovery response binary layout: name (0x00, 132 bytes), commandPort (0x84, uint16 BE), productType (0x8C, uint16 BE), serial (0x92, 130 bytes)
 
+## REST API Routes (server.js → frontend)
+
+All routes return `{ success, ... }`. Most require a connected printer or return `{ success: false, error: 'Not connected' }`.
+
+| Method | Route | Body / Params | Purpose |
+|--------|-------|---------------|---------|
+| GET | `/api/discover` | — | UDP scan for printers (5s timeout) |
+| POST | `/api/connect` | `{ ip, serialNumber? }` | Connect via TCP M115, auto-detect HTTP API |
+| POST | `/api/disconnect` | — | Stop polling, clear state |
+| GET | `/api/status` | — | On-demand full status (normally pushed via WS) |
+| POST | `/api/job/:action` | action: `pause`/`resume`/`continue`/`cancel` | M25/M24/M26 |
+| POST | `/api/led/:state` | state: `on`/`off` | M146 RGB |
+| POST | `/api/temperature` | `{ nozzle?, bed? }` | M104/M140 |
+| POST | `/api/gcode` | `{ command }` | Raw G-code via TCP |
+| POST | `/api/home` | — | G28 |
+| POST | `/api/speed` | `{ speed }` | M220 S{speed} |
+| POST | `/api/fan` | `{ speed? }` (0–255, default 255) | M106 |
+| GET | `/api/info` | — | M115 printer identity |
+| POST | `/api/print` | `{ fileName }` | M23 + M24 (select + start) |
+| GET | `/api/files` | — | M661 file listing |
+
+## WebSocket Messages (server → browser)
+
+The frontend connects a single WebSocket and dispatches on `type`:
+
+| Type | When | Data shape |
+|------|------|------------|
+| `printer-connected` | On connect + new WS client joins | `connectedPrinter` object |
+| `printer-disconnected` | On disconnect | `{}` |
+| `status-update` | Every 3s poll | `getFullStatus()` result (temps, progress, state, position, LED) |
+| `status-error` | Poll failure | `{ error }` |
+
+## Configuration
+
+| Env Variable | Default | Description |
+|-------------|---------|-------------|
+| `PORT` | `3000` | Web server listen port |
+
 ## Known Limitations
 
 - Only one printer connection at a time (global state, no multi-printer support)

@@ -527,6 +527,60 @@ app.get('/api/files', async (req, res) => {
   }
 });
 
+// ─── Camera Proxy ─────────────────────────────────────────────
+
+app.get('/api/camera/detect', async (req, res) => {
+  if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
+  const ip = connectedPrinter.ip;
+  const candidates = [
+    `http://${ip}:8080/?action=stream`,
+    `http://${ip}:8080/?action=snapshot`,
+  ];
+
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (r.ok) {
+        // Prefer the stream URL if snapshot worked (same port, different action)
+        const streamUrl = `http://${ip}:8080/?action=stream`;
+        return res.json({ success: true, url: streamUrl });
+      }
+    } catch {}
+  }
+
+  res.json({ success: false, error: 'No camera found at known endpoints' });
+});
+
+app.get('/api/camera/stream', (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).send('URL parameter required');
+
+  // Security: only allow proxying to the connected printer's IP
+  try {
+    const parsed = new URL(url);
+    if (!connectedPrinter || parsed.hostname !== connectedPrinter.ip) {
+      return res.status(403).send('URL must point to the connected printer');
+    }
+  } catch {
+    return res.status(400).send('Invalid URL');
+  }
+
+  const proxyReq = http.get(url, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, {
+      'Content-Type': proxyRes.headers['content-type'] || 'multipart/x-mixed-replace',
+      'Cache-Control': 'no-cache, no-store',
+      'Connection': 'keep-alive',
+    });
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', () => {
+    if (!res.headersSent) res.status(502).send('Camera connection failed');
+  });
+
+  req.on('close', () => proxyReq.destroy());
+});
+
 // Serve main page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
