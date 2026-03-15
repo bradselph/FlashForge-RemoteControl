@@ -680,37 +680,24 @@
       vertical-align: middle;
     }
 
-    /* Camera fullscreen overlay */
-    .camera-fs-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.95);
-      z-index: 600;
+    /* Camera native fullscreen */
+    .camera-container:fullscreen,
+    .camera-container:-webkit-full-screen {
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .camera-fs-overlay img {
-      max-width: 95vw;
-      max-height: 95vh;
+    .camera-container:fullscreen img,
+    .camera-container:-webkit-full-screen img {
+      width: 100%;
+      height: 100%;
       object-fit: contain;
     }
-    .camera-fs-close {
-      position: absolute;
-      top: 16px;
-      right: 20px;
-      color: #fff;
-      font-size: 28px;
-      cursor: pointer;
-      background: rgba(255,255,255,0.1);
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .camera-container:fullscreen .camera-placeholder,
+    .camera-container:-webkit-full-screen .camera-placeholder {
+      color: #888;
     }
-    .camera-fs-close:hover { background: rgba(255,255,255,0.25); }
 
     /* Temperature chart */
     .temp-chart-wrap {
@@ -889,6 +876,7 @@
         <div class="card-header">
           <h3>G-code Viewer</h3>
           <div class="card-header-actions">
+            <button class="secondary" id="load-current-btn" onclick="loadCurrentPrint()" style="display:none;">Load Current Print</button>
             <button class="secondary" onclick="document.getElementById('gcode-file-input').click()">Open File</button>
             <button class="secondary" onclick="resetViewerCamera()">Reset View</button>
           </div>
@@ -970,12 +958,6 @@
       <button onclick="saveCustomCommand()">Save</button>
     </div>
   </div>
-</div>
-
-<!-- Camera Fullscreen Overlay -->
-<div id="camera-fullscreen" class="camera-fs-overlay" style="display:none;" onclick="closeCameraFullscreen()">
-  <div class="camera-fs-close" onclick="closeCameraFullscreen()">x</div>
-  <img id="camera-fs-img" src="" alt="Camera fullscreen">
 </div>
 
 <script>
@@ -1147,8 +1129,9 @@ function updateStatus(s) {
   // Temperature history chart
   recordTemperature(s);
 
-  // G-code viewer progress
+  // G-code viewer: update progress + detect current print file
   updateGcodeProgress(s.progress || 0);
+  checkCurrentPrintForViewer(s);
 
   // Print completion notification
   checkPrintCompletion(s.state);
@@ -1883,34 +1866,101 @@ function updateGcodeProgress(pct) {
 // ─── Camera Fullscreen / Pop-Out ────────────────────────────────
 function openCameraFullscreen() {
   if (!cameraActive) return;
-  const src = document.getElementById('camera-stream').src;
-  document.getElementById('camera-fs-img').src = src;
-  document.getElementById('camera-fullscreen').style.display = '';
-}
-
-function closeCameraFullscreen() {
-  document.getElementById('camera-fullscreen').style.display = 'none';
-  document.getElementById('camera-fs-img').src = '';
+  const el = document.getElementById('camera-container');
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
 }
 
 function popOutCamera() {
   if (!cameraActive) return;
-  const src = document.getElementById('camera-stream').src;
-  const title = printer ? printer.name + ' Camera' : 'Printer Camera';
-  const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no');
-  if (!w) { toast('Pop-up blocked by browser', 'error'); return; }
-  w.document.write('<!DOCTYPE html><html><head><title>' + title + '</title>' +
-    '<style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}' +
-    'img{max-width:100%;max-height:100%;object-fit:contain}</style></head>' +
-    '<body><img src="' + src + '"></body></html>');
-  w.document.close();
+  const url = document.getElementById('camera-url').value;
+  if (!url) return;
+  // Open the raw proxied MJPEG stream — browser renders it natively
+  const proxyUrl = '/api/camera/stream?url=' + encodeURIComponent(url);
+  const w = window.open(proxyUrl, 'ff_camera', 'width=800,height=600');
+  if (!w) toast('Pop-up blocked — allow pop-ups for this site', 'error');
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('camera-fullscreen').style.display !== 'none') {
-    closeCameraFullscreen();
+// ─── Load Currently-Printing File into 3D Viewer ────────────────
+let trackedPrintFile = null;
+let autoLoadAttempted = false;
+
+async function loadCurrentPrint() {
+  const fileName = lastStatus?.currentFile;
+  if (!fileName) return toast('No file currently printing', 'error');
+
+  const dz = document.getElementById('gcode-dropzone');
+  dz.classList.remove('has-model');
+  dz.textContent = 'Downloading ' + fileName + '...';
+
+  try {
+    const resp = await fetch('/api/files/download?name=' + encodeURIComponent(fileName));
+    const ct = resp.headers.get('content-type') || '';
+
+    if (ct.includes('json')) {
+      const data = await resp.json();
+      dz.innerHTML = '<div style="font-size:14px;font-weight:500;">Could not download from printer</div>' +
+        '<div style="font-size:12px;">' + (data.error || '') + '</div>' +
+        '<div style="font-size:12px;margin-top:8px;">Drop your local copy of <b>' + fileName + '</b> here instead</div>';
+      return;
+    }
+
+    // Got the file content — parse and display
+    const text = await resp.text();
+    try { await loadThreeJs(); } catch (e) {
+      toast('Could not load 3D library: ' + e.message, 'error');
+      dz.textContent = 'Failed to load 3D library';
+      return;
+    }
+    if (!gcodeViewerReady) initGcodeViewer();
+
+    gcodeLayers = parseGcode(text);
+    dz.classList.add('has-model');
+    const slider = document.getElementById('layer-slider');
+    slider.max = gcodeLayers.length;
+    slider.value = gcodeLayers.length;
+    document.getElementById('layer-display').textContent = gcodeLayers.length + ' / ' + gcodeLayers.length + ' layers';
+    document.getElementById('follow-progress').checked = true;
+    renderGcodeLayers(gcodeLayers.length);
+    fitViewerCamera();
+    toast(gcodeLayers.length + ' layers loaded from printer', 'success');
+  } catch (err) {
+    dz.innerHTML = '<div style="font-size:14px;font-weight:500;">Download failed</div>' +
+      '<div style="font-size:12px;">Drop your local copy of <b>' + fileName + '</b> here instead</div>';
   }
-});
+}
+
+function checkCurrentPrintForViewer(s) {
+  const btn = document.getElementById('load-current-btn');
+  const dz = document.getElementById('gcode-dropzone');
+  const isPrinting = s.state === 'printing' || s.state === 'paused';
+
+  if (isPrinting && s.currentFile) {
+    // Show the Load Current Print button
+    btn.style.display = '';
+    btn.textContent = 'Load: ' + s.currentFile;
+
+    // Update dropzone hint when no model loaded
+    if (!dz.classList.contains('has-model')) {
+      dz.innerHTML = '<div style="font-size:14px;font-weight:500;">Printing: ' + s.currentFile + '</div>' +
+        '<div style="font-size:12px;">Click "Load: ' + s.currentFile + '" above or drop the file here</div>';
+    }
+
+    // Auto-download once per print job
+    if (s.currentFile !== trackedPrintFile) {
+      trackedPrintFile = s.currentFile;
+      autoLoadAttempted = false;
+    }
+    if (!autoLoadAttempted && gcodeLayers.length === 0) {
+      autoLoadAttempted = true;
+      loadCurrentPrint();
+    }
+  } else {
+    btn.style.display = 'none';
+    trackedPrintFile = null;
+    autoLoadAttempted = false;
+  }
+}
 
 // ─── Print Completion Notification ──────────────────────────────
 let prevPrintState = null;

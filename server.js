@@ -527,6 +527,59 @@ app.get('/api/files', async (req, res) => {
   }
 });
 
+// ─── File Download from Printer ───────────────────────────────
+
+app.get('/api/files/download', (req, res) => {
+  if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
+  const fileName = req.query.name;
+  if (!fileName) return res.json({ success: false, error: 'File name required' });
+
+  const ip = connectedPrinter.ip;
+
+  // Try HTTP API (port 8898) — only works on printers that expose it
+  if (connectedPrinter.hasHttpApi) {
+    const body = JSON.stringify({
+      serialNumber: connectedPrinter.serialNumber || '',
+      checkCode: '0',
+      fileName: fileName.startsWith('0:/') ? fileName : '0:/user/' + fileName,
+    });
+
+    const proxyReq = http.request({
+      hostname: ip,
+      port: 8898,
+      path: '/downloadGcode',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 60000,
+    }, (proxyRes) => {
+      const ct = proxyRes.headers['content-type'] || '';
+      if (proxyRes.statusCode === 200 && !ct.includes('json')) {
+        res.set('Content-Type', 'text/plain');
+        proxyRes.pipe(res);
+      } else {
+        let data = '';
+        proxyRes.on('data', c => data += c);
+        proxyRes.on('end', () => {
+          res.json({ success: false, error: 'Printer error: ' + data.substring(0, 200) });
+        });
+      }
+    });
+
+    proxyReq.on('error', (err) => {
+      if (!res.headersSent) {
+        res.json({ success: false, error: 'Download failed: ' + err.message });
+      }
+    });
+
+    proxyReq.write(body);
+    proxyReq.end();
+    return;
+  }
+
+  // No HTTP API — can't download via TCP protocol
+  res.json({ success: false, error: 'HTTP API not available on this printer. Load the .gcode file from your computer.' });
+});
+
 // ─── Camera Proxy ─────────────────────────────────────────────
 
 app.get('/api/camera/detect', async (req, res) => {
