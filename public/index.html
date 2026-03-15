@@ -1368,11 +1368,11 @@ function startCamera(url) {
   const img = document.getElementById('camera-stream');
   const placeholder = document.getElementById('camera-placeholder');
 
-  img.onload = () => {
-    placeholder.style.display = 'none';
-    img.style.display = '';
-    cameraActive = true;
-  };
+  // Show img immediately — MJPEG streams (multipart/x-mixed-replace) don't
+  // fire the onload event reliably since the image is never "complete".
+  placeholder.style.display = 'none';
+  img.style.display = '';
+  cameraActive = true;
 
   img.onerror = () => {
     placeholder.style.display = '';
@@ -1384,6 +1384,13 @@ function startCamera(url) {
   // Proxy through server to avoid CORS issues
   img.src = '/api/camera/stream?url=' + encodeURIComponent(url) + '&t=' + Date.now();
   document.getElementById('camera-url').value = url;
+
+  // Fallback: if no image data after 5s, treat as failed
+  setTimeout(() => {
+    if (img.naturalWidth === 0 && cameraActive) {
+      img.onerror();
+    }
+  }, 5000);
 }
 
 async function detectCamera() {
