@@ -618,6 +618,125 @@
       font-size: 13px;
       padding: 8px 12px;
     }
+
+    /* Card header with actions */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .card-header h3 { margin-bottom: 0; }
+    .card-header-actions { display: flex; gap: 6px; }
+    .card-header-actions button {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+
+    /* G-code 3D Viewer */
+    .gcode-viewer-wrap {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 400px;
+      overflow: hidden;
+    }
+    .gcode-viewer-wrap canvas { display: block; }
+    .gcode-dropzone {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      color: var(--text-dim);
+      gap: 8px;
+      z-index: 10;
+    }
+    .gcode-dropzone.has-model { display: none; }
+    .gcode-viewer-wrap.drag-over .gcode-dropzone {
+      display: flex;
+      background: rgba(79,140,255,0.1);
+      border: 2px dashed var(--accent);
+      z-index: 20;
+    }
+    .gcode-viewer-toolbar {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .gcode-viewer-toolbar input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .gcode-viewer-toolbar label { white-space: nowrap; cursor: pointer; }
+    .gcode-viewer-toolbar input[type="checkbox"] {
+      accent-color: var(--accent);
+      margin-right: 3px;
+      vertical-align: middle;
+    }
+
+    /* Camera fullscreen overlay */
+    .camera-fs-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      z-index: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .camera-fs-overlay img {
+      max-width: 95vw;
+      max-height: 95vh;
+      object-fit: contain;
+    }
+    .camera-fs-close {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      color: #fff;
+      font-size: 28px;
+      cursor: pointer;
+      background: rgba(255,255,255,0.1);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .camera-fs-close:hover { background: rgba(255,255,255,0.25); }
+
+    /* Temperature chart */
+    .temp-chart-wrap {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 180px;
+      overflow: hidden;
+    }
+    .temp-chart-wrap canvas { display: block; width: 100%; height: 100%; }
+    .temp-chart-legend {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .legend-swatch {
+      display: inline-block;
+      width: 14px;
+      height: 3px;
+      margin-right: 4px;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -737,8 +856,14 @@
 
       <!-- Camera Stream -->
       <div class="card">
-        <h3>Camera</h3>
-        <div class="camera-container" id="camera-container">
+        <div class="card-header">
+          <h3>Camera</h3>
+          <div class="card-header-actions" id="camera-actions" style="display:none;">
+            <button class="secondary" onclick="openCameraFullscreen()">Fullscreen</button>
+            <button class="secondary" onclick="popOutCamera()">Pop Out</button>
+          </div>
+        </div>
+        <div class="camera-container" id="camera-container" ondblclick="if(cameraActive)openCameraFullscreen()">
           <div class="camera-placeholder" id="camera-placeholder">
             No camera detected<br>
             <span style="font-size:12px;margin-top:4px;display:inline-block;">Enter a stream URL below or click Detect</span>
@@ -757,6 +882,46 @@
         <h3>Custom Commands</h3>
         <div class="custom-commands-grid" id="custom-commands-grid"></div>
         <button class="secondary" onclick="openAddCommandModal()" style="margin-top:12px;width:100%;padding:8px;">+ Add Command</button>
+      </div>
+
+      <!-- G-code 3D Viewer -->
+      <div class="card" style="grid-column: span 2;">
+        <div class="card-header">
+          <h3>G-code Viewer</h3>
+          <div class="card-header-actions">
+            <button class="secondary" onclick="document.getElementById('gcode-file-input').click()">Open File</button>
+            <button class="secondary" onclick="resetViewerCamera()">Reset View</button>
+          </div>
+        </div>
+        <input type="file" id="gcode-file-input" accept=".gcode,.gco,.g" style="display:none;" onchange="handleGcodeFile(this.files[0])">
+        <div class="gcode-viewer-wrap" id="gcode-viewer-wrap"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="event.preventDefault();this.classList.remove('drag-over');handleGcodeFile(event.dataTransfer.files[0])">
+          <div class="gcode-dropzone" id="gcode-dropzone">
+            <div style="font-size:14px;font-weight:500;">Drop a .gcode file here to visualize</div>
+            <div style="font-size:12px;">or click Open File above</div>
+          </div>
+          <div id="gcode-viewer-canvas" style="width:100%;height:100%;"></div>
+        </div>
+        <div class="gcode-viewer-toolbar">
+          <span id="layer-display">--</span>
+          <input type="range" id="layer-slider" min="0" max="1" value="1" oninput="setVisibleLayers(parseInt(this.value))">
+          <label><input type="checkbox" id="follow-progress" checked> Follow print</label>
+        </div>
+      </div>
+
+      <!-- Temperature History -->
+      <div class="card" style="grid-column: span 2;">
+        <h3>Temperature History</h3>
+        <div class="temp-chart-wrap">
+          <canvas id="temp-chart"></canvas>
+        </div>
+        <div class="temp-chart-legend">
+          <span><span class="legend-swatch" style="background:var(--orange);"></span>Nozzle</span>
+          <span><span class="legend-swatch" style="background:var(--accent);"></span>Bed</span>
+          <span><span class="legend-swatch" style="background:var(--text-dim);border-bottom:1px dashed var(--text-dim);height:0;"></span>Targets (dashed)</span>
+        </div>
       </div>
 
       <!-- G-code Console -->
@@ -805,6 +970,12 @@
       <button onclick="saveCustomCommand()">Save</button>
     </div>
   </div>
+</div>
+
+<!-- Camera Fullscreen Overlay -->
+<div id="camera-fullscreen" class="camera-fs-overlay" style="display:none;" onclick="closeCameraFullscreen()">
+  <div class="camera-fs-close" onclick="closeCameraFullscreen()">x</div>
+  <img id="camera-fs-img" src="" alt="Camera fullscreen">
 </div>
 
 <script>
@@ -972,6 +1143,15 @@ function updateStatus(s) {
   // LED state
   ledState = s.ledState === 1;
   document.getElementById('led-toggle').classList.toggle('on', ledState);
+
+  // Temperature history chart
+  recordTemperature(s);
+
+  // G-code viewer progress
+  updateGcodeProgress(s.progress || 0);
+
+  // Print completion notification
+  checkPrintCompletion(s.state);
 }
 
 // ─── Controls ──────────────────────────────────────────────────
@@ -1373,6 +1553,7 @@ function startCamera(url) {
   placeholder.style.display = 'none';
   img.style.display = '';
   cameraActive = true;
+  document.getElementById('camera-actions').style.display = '';
 
   img.onerror = () => {
     placeholder.style.display = '';
@@ -1410,9 +1591,357 @@ async function detectCamera() {
   }
 }
 
+// ─── Temperature History Chart ──────────────────────────────────
+const tempHistory = [];
+const TEMP_HISTORY_MAX = 120; // 6 min at 3s polls
+
+function recordTemperature(s) {
+  tempHistory.push({
+    nozzle: s.nozzleTemp, nozzleTarget: s.nozzleTarget,
+    bed: s.bedTemp, bedTarget: s.bedTarget,
+  });
+  if (tempHistory.length > TEMP_HISTORY_MAX) tempHistory.shift();
+  drawTempChart();
+}
+
+function drawTempChart() {
+  const canvas = document.getElementById('temp-chart');
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const w = rect.width, h = rect.height;
+  const pad = { top: 8, right: 8, bottom: 20, left: 40 };
+  const pw = w - pad.left - pad.right, ph = h - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+  if (tempHistory.length < 2) {
+    ctx.fillStyle = '#8b90a5'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Collecting temperature data...', w / 2, h / 2);
+    return;
+  }
+
+  let maxT = 50;
+  for (const t of tempHistory) maxT = Math.max(maxT, t.nozzle, t.nozzleTarget, t.bed, t.bedTarget);
+  maxT = Math.ceil(maxT / 50) * 50 + 20;
+
+  // Grid
+  ctx.strokeStyle = '#1e2130'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + ph * i / 4;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + pw, y); ctx.stroke();
+    ctx.fillStyle = '#8b90a5'; ctx.font = '10px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxT - maxT * i / 4) + '\u00B0', pad.left - 4, y + 3);
+  }
+  const secs = tempHistory.length * 3;
+  ctx.fillStyle = '#8b90a5'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Last ' + (secs >= 60 ? Math.round(secs / 60) + 'm' : secs + 's'), w / 2, h - 2);
+
+  function plotLine(key, color, dash) {
+    ctx.strokeStyle = color; ctx.lineWidth = dash ? 1 : 2; ctx.setLineDash(dash ? [5, 4] : []);
+    ctx.beginPath();
+    for (let i = 0; i < tempHistory.length; i++) {
+      const x = pad.left + (i / (tempHistory.length - 1)) * pw;
+      const y = pad.top + ph * (1 - tempHistory[i][key] / maxT);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  plotLine('nozzleTarget', '#5a5e72', true);
+  plotLine('bedTarget', '#5a5e72', true);
+  plotLine('bed', '#4f8cff', false);
+  plotLine('nozzle', '#fb923c', false);
+}
+
+// ─── G-code 3D Viewer (Three.js lazy-loaded) ───────────────────
+let threeLoaded = false;
+let gcodeScene, gcodeCamera, gcodeRenderer, gcodeControls;
+let gcodeGroup = null;
+let gcodeLayers = [];
+let gcodeViewerReady = false;
+
+function loadThreeJs() {
+  return new Promise((resolve, reject) => {
+    if (threeLoaded) return resolve();
+    const s1 = document.createElement('script');
+    s1.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+      s2.onload = () => { threeLoaded = true; resolve(); };
+      s2.onerror = () => reject(new Error('Failed to load OrbitControls'));
+      document.head.appendChild(s2);
+    };
+    s1.onerror = () => reject(new Error('Failed to load Three.js'));
+    document.head.appendChild(s1);
+  });
+}
+
+function initGcodeViewer() {
+  const container = document.getElementById('gcode-viewer-canvas');
+  const w = container.clientWidth, h = container.clientHeight;
+  if (w === 0 || h === 0) return;
+
+  gcodeScene = new THREE.Scene();
+  gcodeScene.background = new THREE.Color(0x0f1117);
+
+  gcodeCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 10000);
+  gcodeCamera.position.set(200, 200, 200);
+
+  gcodeRenderer = new THREE.WebGLRenderer({ antialias: true });
+  gcodeRenderer.setSize(w, h);
+  gcodeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(gcodeRenderer.domElement);
+
+  gcodeControls = new THREE.OrbitControls(gcodeCamera, gcodeRenderer.domElement);
+  gcodeControls.enableDamping = true;
+  gcodeControls.dampingFactor = 0.12;
+
+  // Build plate grid
+  const grid = new THREE.GridHelper(220, 22, 0x2e3345, 0x1a1d27);
+  gcodeScene.add(grid);
+
+  gcodeScene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  gcodeViewerReady = true;
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    gcodeControls.update();
+    gcodeRenderer.render(gcodeScene, gcodeCamera);
+  })();
+
+  new ResizeObserver(() => {
+    const w = container.clientWidth, h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    gcodeCamera.aspect = w / h;
+    gcodeCamera.updateProjectionMatrix();
+    gcodeRenderer.setSize(w, h);
+  }).observe(container);
+}
+
+function parseGcode(text) {
+  const lines = text.split('\n');
+  const layers = [];
+  let layer = [];
+  let pos = { x: 0, y: 0, z: 0 };
+  let lastZ = -999;
+  let abs = true;
+
+  for (const raw of lines) {
+    const line = raw.split(';')[0].trim();
+    if (!line) continue;
+    const parts = line.split(/\s+/);
+    const cmd = parts[0].toUpperCase();
+
+    if (cmd === 'G90') { abs = true; continue; }
+    if (cmd === 'G91') { abs = false; continue; }
+    if (cmd === 'G92') {
+      for (let j = 1; j < parts.length; j++) {
+        const a = parts[j][0].toUpperCase(), v = parseFloat(parts[j].slice(1));
+        if (!isNaN(v)) { if (a === 'X') pos.x = v; if (a === 'Y') pos.y = v; if (a === 'Z') pos.z = v; }
+      }
+      continue;
+    }
+    if (cmd !== 'G0' && cmd !== 'G1') continue;
+
+    const prev = { ...pos };
+    let hasE = false;
+    for (let j = 1; j < parts.length; j++) {
+      const a = parts[j][0].toUpperCase(), v = parseFloat(parts[j].slice(1));
+      if (isNaN(v)) continue;
+      if (a === 'X') pos.x = abs ? v : pos.x + v;
+      if (a === 'Y') pos.y = abs ? v : pos.y + v;
+      if (a === 'Z') pos.z = abs ? v : pos.z + v;
+      if (a === 'E') hasE = true;
+    }
+
+    if (pos.z > lastZ + 0.01 && layer.length > 0) {
+      layers.push(new Float32Array(layer));
+      layer = [];
+    }
+    lastZ = pos.z;
+
+    if (hasE && cmd === 'G1' && (prev.x !== pos.x || prev.y !== pos.y)) {
+      layer.push(prev.x, prev.z, -prev.y, pos.x, pos.z, -pos.y);
+    }
+  }
+  if (layer.length > 0) layers.push(new Float32Array(layer));
+  return layers;
+}
+
+async function handleGcodeFile(file) {
+  if (!file) return;
+  const dz = document.getElementById('gcode-dropzone');
+  dz.textContent = 'Loading...';
+
+  try { await loadThreeJs(); } catch (e) {
+    toast('Could not load 3D library: ' + e.message, 'error');
+    dz.textContent = 'Failed to load 3D library';
+    return;
+  }
+  if (!gcodeViewerReady) initGcodeViewer();
+
+  const text = await file.text();
+  gcodeLayers = parseGcode(text);
+
+  dz.classList.add('has-model');
+  const slider = document.getElementById('layer-slider');
+  slider.max = gcodeLayers.length;
+  slider.value = gcodeLayers.length;
+  document.getElementById('layer-display').textContent = gcodeLayers.length + ' / ' + gcodeLayers.length + ' layers';
+
+  renderGcodeLayers(gcodeLayers.length);
+  fitViewerCamera();
+  toast(gcodeLayers.length + ' layers loaded from ' + file.name, 'success');
+}
+
+function renderGcodeLayers(count) {
+  if (!gcodeScene) return;
+  if (gcodeGroup) { gcodeScene.remove(gcodeGroup); gcodeGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+  gcodeGroup = new THREE.Group();
+  const total = gcodeLayers.length;
+  const progLayer = lastStatus ? Math.floor((lastStatus.progress / 100) * total) : total;
+
+  for (let i = 0; i < Math.min(count, total); i++) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(gcodeLayers[i], 3));
+
+    let color, opacity = 1;
+    if (i < progLayer) {
+      const t = i / total;
+      color = new THREE.Color().setHSL(0.55 - t * 0.35, 0.75, 0.55);
+    } else if (i === progLayer) {
+      color = new THREE.Color(0x4f8cff);
+    } else {
+      color = new THREE.Color(0x3a3f52); opacity = 0.15;
+    }
+
+    gcodeGroup.add(new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color, opacity, transparent: opacity < 1 })));
+  }
+
+  const box = new THREE.Box3().setFromObject(gcodeGroup);
+  if (!box.isEmpty()) {
+    const c = box.getCenter(new THREE.Vector3());
+    gcodeGroup.position.x -= c.x;
+    gcodeGroup.position.z -= c.z;
+  }
+  gcodeScene.add(gcodeGroup);
+}
+
+function fitViewerCamera() {
+  if (!gcodeGroup) return;
+  const box = new THREE.Box3().setFromObject(gcodeGroup);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  const len = size.length();
+  gcodeCamera.position.set(len * 0.7, len * 0.55, len * 0.7);
+  gcodeControls.target.set(0, size.y / 3, 0);
+  gcodeControls.update();
+}
+
+function resetViewerCamera() {
+  if (gcodeGroup) fitViewerCamera();
+}
+
+function setVisibleLayers(n) {
+  const total = gcodeLayers.length;
+  if (total === 0) return;
+  document.getElementById('layer-display').textContent = n + ' / ' + total + ' layers';
+  document.getElementById('follow-progress').checked = false;
+  renderGcodeLayers(n);
+}
+
+function updateGcodeProgress(pct) {
+  if (!gcodeGroup || gcodeLayers.length === 0) return;
+  if (!document.getElementById('follow-progress').checked) return;
+  const total = gcodeLayers.length;
+  const progLayer = Math.floor((pct / 100) * total);
+
+  gcodeGroup.children.forEach((mesh, i) => {
+    if (i < progLayer) {
+      const t = i / total;
+      mesh.material.color.setHSL(0.55 - t * 0.35, 0.75, 0.55);
+      mesh.material.opacity = 1; mesh.material.transparent = false;
+    } else if (i === progLayer) {
+      mesh.material.color.set(0x4f8cff);
+      mesh.material.opacity = 1; mesh.material.transparent = false;
+    } else {
+      mesh.material.color.set(0x3a3f52);
+      mesh.material.opacity = 0.15; mesh.material.transparent = true;
+    }
+  });
+
+  const slider = document.getElementById('layer-slider');
+  const show = Math.min(progLayer + 1, total);
+  slider.value = show;
+  document.getElementById('layer-display').textContent = show + ' / ' + total + ' layers';
+}
+
+// ─── Camera Fullscreen / Pop-Out ────────────────────────────────
+function openCameraFullscreen() {
+  if (!cameraActive) return;
+  const src = document.getElementById('camera-stream').src;
+  document.getElementById('camera-fs-img').src = src;
+  document.getElementById('camera-fullscreen').style.display = '';
+}
+
+function closeCameraFullscreen() {
+  document.getElementById('camera-fullscreen').style.display = 'none';
+  document.getElementById('camera-fs-img').src = '';
+}
+
+function popOutCamera() {
+  if (!cameraActive) return;
+  const src = document.getElementById('camera-stream').src;
+  const title = printer ? printer.name + ' Camera' : 'Printer Camera';
+  const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no');
+  if (!w) { toast('Pop-up blocked by browser', 'error'); return; }
+  w.document.write('<!DOCTYPE html><html><head><title>' + title + '</title>' +
+    '<style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}' +
+    'img{max-width:100%;max-height:100%;object-fit:contain}</style></head>' +
+    '<body><img src="' + src + '"></body></html>');
+  w.document.close();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('camera-fullscreen').style.display !== 'none') {
+    closeCameraFullscreen();
+  }
+});
+
+// ─── Print Completion Notification ──────────────────────────────
+let prevPrintState = null;
+
+function checkPrintCompletion(state) {
+  if (prevPrintState === 'printing' && state === 'completed') {
+    toast('Print completed!', 'success');
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Print Complete', { body: lastStatus?.currentFile || 'Your print has finished' });
+    }
+    try {
+      const actx = new AudioContext();
+      function beep(freq, delay) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.connect(g); g.connect(actx.destination);
+        o.frequency.value = freq; g.gain.value = 0.25;
+        o.start(actx.currentTime + delay);
+        o.stop(actx.currentTime + delay + 0.2);
+      }
+      beep(800, 0); beep(1000, 0.3); beep(1200, 0.6);
+    } catch {}
+  }
+  prevPrintState = state;
+}
+
 // ─── Init ──────────────────────────────────────────────────────
 renderCustomCommands();
 connectWebSocket();
+if ('Notification' in window && Notification.permission === 'default') {
+  Notification.requestPermission();
+}
 </script>
 </body>
 </html>
