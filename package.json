@@ -1,0 +1,14 @@
+{
+  "name": "flashforge-remote-control",
+  "version": "1.0.0",
+  "description": "Web-based remote control for FlashForge 3D printers (AD5M, AD5M Pro, AD5X, Guider 4)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

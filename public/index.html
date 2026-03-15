@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashForge Remote Control</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #242836;
+      --border: #2e3345;
+      --text: #e4e7f0;
+      --text-dim: #8b90a5;
+      --accent: #4f8cff;
+      --accent-hover: #6ba0ff;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --orange: #fb923c;
+      --radius: 10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 20px; font-weight: 600; }
+    header .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+      margin-right: 8px;
+    }
+    header .status-dot.connected { background: var(--green); }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Discovery Panel */
+    #discovery-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    #discovery-panel h2 { font-size: 16px; margin-bottom: 16px; }
+
+    .discovery-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    input[type="text"], input[type="number"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 14px;
+      flex: 1;
+    }
+
+    input:focus { outline: none; border-color: var(--accent); }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.danger { background: var(--red); }
+    button.danger:hover { background: #ef4444; }
+    button.success { background: var(--green); }
+    button.success:hover { background: #10b981; }
+    button.warning { background: var(--orange); }
+    button.warning:hover { background: #f97316; }
+    button.secondary { background: var(--surface2); border: 1px solid var(--border); }
+    button.secondary:hover { background: var(--border); }
+
+    .printer-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .printer-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.2s;
+    }
+
+    .printer-item:hover { border-color: var(--accent); }
+    .printer-item .info { display: flex; flex-direction: column; gap: 4px; }
+    .printer-item .name { font-weight: 600; }
+    .printer-item .details { font-size: 13px; color: var(--text-dim); }
+
+    /* Main Dashboard */
+    #dashboard { display: none; }
+    #dashboard.visible { display: block; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .card h3 {
+      font-size: 14px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    /* Status Card */
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label { font-size: 12px; color: var(--text-dim); }
+    .stat-value { font-size: 22px; font-weight: 700; }
+    .stat-value.temp-hot { color: var(--orange); }
+    .stat-value.temp-cold { color: var(--accent); }
+
+    /* Progress bar */
+    .progress-container {
+      margin-top: 16px;
+    }
+
+    .progress-bar {
+      background: var(--surface2);
+      border-radius: 8px;
+      height: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      border-radius: 8px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    /* State badge */
+    .state-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: capitalize;
+      margin-bottom: 12px;
+    }
+
+    .state-ready { background: rgba(52,211,153,0.15); color: var(--green); }
+    .state-printing { background: rgba(79,140,255,0.15); color: var(--accent); }
+    .state-paused { background: rgba(251,191,36,0.15); color: var(--yellow); }
+    .state-error { background: rgba(248,113,113,0.15); color: var(--red); }
+    .state-completed { background: rgba(52,211,153,0.15); color: var(--green); }
+
+    /* Controls */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-group button { flex: 1; min-width: 80px; }
+
+    /* Temperature display */
+    .temp-display {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .temp-current { font-size: 28px; font-weight: 700; }
+    .temp-target { font-size: 16px; color: var(--text-dim); }
+    .temp-unit { font-size: 14px; color: var(--text-dim); }
+
+    /* G-code console */
+    .gcode-log {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      height: 180px;
+      overflow-y: auto;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      margin-bottom: 12px;
+      color: var(--text-dim);
+    }
+
+    .gcode-log .cmd { color: var(--accent); }
+    .gcode-log .resp { color: var(--green); }
+    .gcode-log .err { color: var(--red); }
+
+    .gcode-input {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Job info */
+    .job-name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+
+    .job-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .job-stat-label { color: var(--text-dim); }
+
+    /* File list */
+    .file-list {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
+    .file-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: var(--surface2); }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--surface2);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: 1px solid var(--border);
+    }
+
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+
+    .toggle::after {
+      content: '';
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.2s;
+    }
+
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* Quick actions */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .quick-actions button {
+      padding: 12px;
+      font-size: 13px;
+    }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+      header { padding: 12px 16px; }
+      .container { padding: 12px; }
+      .status-grid { grid-template-columns: 1fr 1fr; }
+      .job-stats { grid-template-columns: 1fr 1fr; }
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--text-dim);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <h1>FlashForge Remote Control</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="connection-text">Disconnected</span>
+    <button id="disconnect-btn" class="danger" style="display:none;" onclick="disconnect()">Disconnect</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Discovery Panel -->
+  <div id="discovery-panel">
+    <h2>Connect to Printer</h2>
+    <div class="discovery-row">
+      <input type="text" id="manual-ip" placeholder="Enter printer IP address (e.g. 192.168.1.100)">
+      <button onclick="connectManual()">Connect</button>
+      <button class="secondary" onclick="scanNetwork()">Scan Network</button>
+    </div>
+    <div id="printer-list" class="printer-list"></div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <div class="grid">
+
+      <!-- Printer Status -->
+      <div class="card">
+        <h3>Printer Status</h3>
+        <span id="state-badge" class="state-badge state-ready">Ready</span>
+        <div id="job-info" style="display:none;">
+          <div class="job-name" id="job-name">-</div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+            </div>
+            <div class="progress-label">
+              <span id="progress-pct">0%</span>
+              <span id="progress-eta">--</span>
+            </div>
+          </div>
+          <div class="job-stats" style="margin-top:12px;">
+            <div><span class="job-stat-label">Layer</span><br><span id="job-layer">-</span></div>
+            <div><span class="job-stat-label">Elapsed</span><br><span id="job-elapsed">-</span></div>
+            <div><span class="job-stat-label">Remaining</span><br><span id="job-remaining">-</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Temperatures -->
+      <div class="card">
+        <h3>Temperatures</h3>
+        <div class="status-grid">
+          <div class="stat">
+            <span class="stat-label">Nozzle</span>
+            <div class="temp-display">
+              <span class="temp-current" id="nozzle-temp">--</span>
+              <span class="temp-unit">&deg;C</span>
+              <span class="temp-target" id="nozzle-target"></span>
+            </div>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Bed</span>
+            <div class="temp-display">
+              <span class="temp-current" id="bed-temp">--</span>
+              <span class="temp-unit">&deg;C</span>
+              <span class="temp-target" id="bed-target"></span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+          <input type="number" id="set-nozzle-temp" placeholder="Nozzle &deg;C" style="width:100px;">
+          <input type="number" id="set-bed-temp" placeholder="Bed &deg;C" style="width:100px;">
+          <button onclick="setTemperatures()">Set</button>
+          <button class="secondary" onclick="coolDown()">Cool Down</button>
+        </div>
+      </div>
+
+      <!-- Job Control -->
+      <div class="card">
+        <h3>Job Control</h3>
+        <div class="btn-group" style="margin-bottom:12px;">
+          <button class="warning" onclick="jobAction('pause')">Pause</button>
+          <button class="success" onclick="jobAction('continue')">Resume</button>
+          <button class="danger" onclick="jobAction('cancel')">Cancel</button>
+        </div>
+        <div style="margin-top:8px;">
+          <label class="stat-label">Print Speed Override</label>
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <input type="number" id="speed-input" placeholder="100" value="100" style="width:80px;" min="50" max="300">
+            <span style="align-self:center;color:var(--text-dim);">%</span>
+            <button class="secondary" onclick="setSpeed()">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="card">
+        <h3>Quick Actions</h3>
+        <div class="quick-actions">
+          <button class="secondary" onclick="homeAxes()">Home All Axes</button>
+          <button class="secondary" onclick="toggleLed()">Toggle LED</button>
+          <button class="secondary" onclick="loadFiles()">List Files</button>
+          <button class="secondary" onclick="getProduct()">Printer Info</button>
+        </div>
+        <div class="toggle-row" style="margin-top:12px;">
+          <span>LED Light</span>
+          <div class="toggle" id="led-toggle" onclick="toggleLed()"></div>
+        </div>
+      </div>
+
+      <!-- G-code Console -->
+      <div class="card" style="grid-column: span 2;">
+        <h3>G-code Console</h3>
+        <div class="gcode-log" id="gcode-log"></div>
+        <div class="gcode-input">
+          <input type="text" id="gcode-input" placeholder="Enter G-code command (e.g. M105, G28, M115)..." onkeydown="if(event.key==='Enter')sendGcode()">
+          <button onclick="sendGcode()">Send</button>
+        </div>
+      </div>
+
+      <!-- Files -->
+      <div class="card" style="grid-column: span 2;">
+        <h3>Files on Printer</h3>
+        <div class="file-list" id="file-list">
+          <div style="color:var(--text-dim);padding:20px;text-align:center;">Click "List Files" to load</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ─────────────────────────────────────────────────────
+let ws = null;
+let printer = null;
+let ledState = false;
+let lastStatus = null;
+
+// ─── WebSocket ─────────────────────────────────────────────────
+function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    switch (msg.type) {
+      case 'printer-connected':
+        onPrinterConnected(msg.data);
+        break;
+      case 'printer-disconnected':
+        onPrinterDisconnected();
+        break;
+      case 'status-update':
+        updateStatus(msg.data);
+        break;
+      case 'status-error':
+        console.error('Status error:', msg.data.error);
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    setTimeout(connectWebSocket, 2000);
+  };
+}
+
+// ─── Connection ────────────────────────────────────────────────
+function onPrinterConnected(data) {
+  printer = data;
+  document.getElementById('status-dot').classList.add('connected');
+  document.getElementById('connection-text').textContent = `${data.name || data.model} (${data.ip})`;
+  document.getElementById('disconnect-btn').style.display = '';
+  document.getElementById('discovery-panel').style.display = 'none';
+  document.getElementById('dashboard').classList.add('visible');
+}
+
+function onPrinterDisconnected() {
+  printer = null;
+  lastStatus = null;
+  document.getElementById('status-dot').classList.remove('connected');
+  document.getElementById('connection-text').textContent = 'Disconnected';
+  document.getElementById('disconnect-btn').style.display = 'none';
+  document.getElementById('discovery-panel').style.display = '';
+  document.getElementById('dashboard').classList.remove('visible');
+}
+
+async function connectManual() {
+  const ip = document.getElementById('manual-ip').value.trim();
+  if (!ip) return;
+  try {
+    const resp = await fetch('/api/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip }),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      toast('Connection failed: ' + data.error, 'error');
+    }
+  } catch (err) {
+    toast('Connection error: ' + err.message, 'error');
+  }
+}
+
+async function disconnect() {
+  await fetch('/api/disconnect', { method: 'POST' });
+}
+
+// ─── Discovery ─────────────────────────────────────────────────
+async function scanNetwork() {
+  const list = document.getElementById('printer-list');
+  list.innerHTML = '<div style="padding:16px;text-align:center;"><div class="loading"></div> Scanning network...</div>';
+
+  try {
+    const resp = await fetch('/api/discover');
+    const data = await resp.json();
+
+    if (!data.success || !data.printers.length) {
+      list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-dim);">No printers found. Try entering the IP manually.</div>';
+      return;
+    }
+
+    list.innerHTML = data.printers.map(p => `
+      <div class="printer-item">
+        <div class="info">
+          <span class="name">${p.name || p.model}</span>
+          <span class="details">${p.model} | ${p.ipAddress} | ${p.serialNumber ? 'SN: ' + p.serialNumber.substring(0, 12) + '...' : 'Legacy'}</span>
+        </div>
+        <button onclick="connectToPrinter('${p.ipAddress}', '${p.serialNumber || ''}')">Connect</button>
+      </div>
+    `).join('');
+  } catch (err) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--red);">Scan failed: ' + err.message + '</div>';
+  }
+}
+
+async function connectToPrinter(ip, serialNumber) {
+  document.getElementById('manual-ip').value = ip;
+  try {
+    const resp = await fetch('/api/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, serialNumber }),
+    });
+    const data = await resp.json();
+    if (!data.success) {
+      toast('Connection failed: ' + data.error, 'error');
+    }
+  } catch (err) {
+    toast('Connection error: ' + err.message, 'error');
+  }
+}
+
+// ─── Status Updates ────────────────────────────────────────────
+function updateStatus(s) {
+  lastStatus = s;
+
+  // State badge
+  const state = s.state || 'unknown';
+  const badge = document.getElementById('state-badge');
+  const stateLabels = { ready: 'Ready', printing: 'Printing', paused: 'Paused', error: 'Error', completed: 'Completed', busy: 'Busy' };
+  badge.textContent = stateLabels[state] || s.machineStatus || state;
+  badge.className = 'state-badge state-' + state;
+
+  // Temperatures
+  document.getElementById('nozzle-temp').textContent = Math.round(s.nozzleTemp);
+  document.getElementById('nozzle-target').textContent = s.nozzleTarget > 0 ? `/ ${Math.round(s.nozzleTarget)}` : '';
+  document.getElementById('bed-temp').textContent = Math.round(s.bedTemp);
+  document.getElementById('bed-target').textContent = s.bedTarget > 0 ? `/ ${Math.round(s.bedTarget)}` : '';
+
+  // Colorize
+  document.getElementById('nozzle-temp').className = 'temp-current ' + (s.nozzleTemp > 50 ? 'temp-hot' : 'temp-cold');
+  document.getElementById('bed-temp').className = 'temp-current ' + (s.bedTemp > 40 ? 'temp-hot' : 'temp-cold');
+
+  // Job info
+  const jobInfo = document.getElementById('job-info');
+  const isPrintingState = ['printing', 'paused', 'completed'].includes(state);
+
+  if (isPrintingState && s.currentFile) {
+    jobInfo.style.display = '';
+    document.getElementById('job-name').textContent = s.currentFile;
+    document.getElementById('progress-fill').style.width = s.progress + '%';
+    document.getElementById('progress-pct').textContent = s.progress + '%';
+
+    document.getElementById('job-layer').textContent = `${s.currentLayer} / ${s.totalLayers}`;
+    document.getElementById('job-elapsed').textContent = s.moveMode || '--';
+    document.getElementById('job-remaining').textContent = s.endstops || '--';
+  } else {
+    jobInfo.style.display = 'none';
+  }
+
+  // LED state
+  ledState = s.ledState === 1;
+  document.getElementById('led-toggle').classList.toggle('on', ledState);
+}
+
+// ─── Controls ──────────────────────────────────────────────────
+async function jobAction(action) {
+  if (action === 'cancel' && !confirm('Cancel the current print job?')) return;
+  const resp = await fetch(`/api/job/${action}`, { method: 'POST' });
+  const data = await resp.json();
+  toast(data.success ? `Job ${action} sent` : `Failed: ${data.error}`, data.success ? 'success' : 'error');
+}
+
+async function toggleLed() {
+  ledState = !ledState;
+  const state = ledState ? 'on' : 'off';
+  const resp = await fetch(`/api/led/${state}`, { method: 'POST' });
+  const data = await resp.json();
+  if (data.success) {
+    document.getElementById('led-toggle').classList.toggle('on', ledState);
+  }
+}
+
+async function homeAxes() {
+  toast('Homing axes...');
+  const resp = await fetch('/api/home', { method: 'POST' });
+  const data = await resp.json();
+  toast(data.success ? 'Home command sent' : `Failed: ${data.error}`, data.success ? 'success' : 'error');
+}
+
+async function setTemperatures() {
+  const nozzle = document.getElementById('set-nozzle-temp').value;
+  const bed = document.getElementById('set-bed-temp').value;
+  const body = {};
+  if (nozzle) body.nozzle = parseInt(nozzle);
+  if (bed) body.bed = parseInt(bed);
+  if (!nozzle && !bed) return toast('Enter a temperature value', 'error');
+  const resp = await fetch('/api/temperature', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json();
+  toast(data.success ? 'Temperature set' : `Failed: ${data.error}`, data.success ? 'success' : 'error');
+}
+
+async function coolDown() {
+  const resp = await fetch('/api/temperature', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nozzle: 0, bed: 0 }),
+  });
+  const data = await resp.json();
+  toast(data.success ? 'Cooling down' : `Failed: ${data.error}`, data.success ? 'success' : 'error');
+}
+
+async function setSpeed() {
+  const speed = parseInt(document.getElementById('speed-input').value) || 100;
+  const resp = await fetch('/api/speed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ speed }),
+  });
+  const data = await resp.json();
+  toast(data.success ? `Speed set to ${speed}%` : `Failed: ${data.error}`, data.success ? 'success' : 'error');
+}
+
+// ─── G-code Console ────────────────────────────────────────────
+async function sendGcode() {
+  const input = document.getElementById('gcode-input');
+  const command = input.value.trim();
+  if (!command) return;
+  input.value = '';
+
+  appendLog('cmd', `> ${command}`);
+
+  const resp = await fetch('/api/gcode', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ command }),
+  });
+  const data = await resp.json();
+
+  if (data.success) {
+    appendLog('resp', data.response);
+  } else {
+    appendLog('err', `Error: ${data.error}`);
+  }
+}
+
+function appendLog(cls, text) {
+  const log = document.getElementById('gcode-log');
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ─── Files ─────────────────────────────────────────────────────
+async function loadFiles() {
+  const list = document.getElementById('file-list');
+  list.innerHTML = '<div style="padding:16px;text-align:center;"><div class="loading"></div></div>';
+
+  const resp = await fetch('/api/files');
+  const data = await resp.json();
+
+  if (!data.success) {
+    list.innerHTML = `<div style="padding:16px;text-align:center;color:var(--red);">${data.error}</div>`;
+    return;
+  }
+
+  const files = data.files?.recentList || data.files?.localList || data.files || [];
+  if (!files.length) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-dim);">No files found</div>';
+    return;
+  }
+
+  list.innerHTML = files.map(f => {
+    const name = typeof f === 'string' ? f : (f.gcodeFileName || f.fileName || f.name || 'Unknown');
+    const time = f.printingTime ? formatTime(f.printingTime) : '';
+    return `
+      <div class="file-item">
+        <span>${name}</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${time ? `<span style="color:var(--text-dim);">${time}</span>` : ''}
+          <button onclick="printFile('${name.replace(/'/g, "\\'")}')" style="padding:4px 12px;font-size:12px;">Print</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function printFile(fileName) {
+  if (!confirm(`Start printing "${fileName}"?`)) return;
+  const resp = await fetch('/api/print', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileName, levelingBeforePrint: false }),
+  });
+  const data = await resp.json();
+  toast(data.success ? `Printing: ${fileName}` : `Failed: ${data.error}`, data.success ? 'success' : 'error');
+}
+
+async function getProduct() {
+  const resp = await fetch('/api/product');
+  const data = await resp.json();
+  if (data.success) {
+    appendLog('resp', JSON.stringify(data.product, null, 2));
+  } else {
+    toast(`Failed: ${data.error}`, 'error');
+  }
+}
+
+// ─── Helpers ───────────────────────────────────────────────────
+function formatTime(seconds) {
+  if (!seconds || seconds <= 0) return '--';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function toast(message, type = 'info') {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = message;
+  if (type === 'error') el.style.borderColor = 'var(--red)';
+  if (type === 'success') el.style.borderColor = 'var(--green)';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ─── Init ──────────────────────────────────────────────────────
+connectWebSocket();
+</script>
+</body>
+</html>
