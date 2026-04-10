@@ -1,0 +1,8 @@
+services:
+  flashforge-remote-control:
+    image: ghcr.io/susplayer32/flashforge-remote-control:latest
+    container_name: flashforge-remote-control
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PORT=3000
