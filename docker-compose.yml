@@ -1,3 +1,5 @@
+name: flashforge-remote-control
+
 services:
   flashforge-remote-control:
     image: ghcr.io/susplayer32/flashforge-remote-control:latest
@@ -6,3 +8,28 @@ services:
     network_mode: host
     environment:
       - PORT=3000
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: flashforge-remote-control
+  store_app_id: flashforge-remote-control
+  category: Utilities
+  author: susplayer32
+  developer: susplayer32
+  icon: https://raw.githubusercontent.com/susplayer32/FlashForge-RemoteControl/master/public/icon.png
+  description:
+    en_us: Web-based remote control panel for FlashForge 3D printers (AD5M, AD5X, Guider 4). Discovers printers on your LAN via UDP multicast, then controls them over TCP. Supports temperature monitoring, job control, LED, G-code console, and file management. Host networking is required for automatic printer discovery.
+  tagline:
+    en_us: Remote control for FlashForge 3D printers
+  tips:
+    before_install:
+      en_us: |
+        Host network mode is required so the app can discover printers on your LAN via UDP multicast.
+        The web UI will be available at http://[your-server-ip]:3000
+        If auto-discovery doesn't find your printer, use the manual IP entry in the UI.
+  title:
+    en_us: FlashForge Remote Control
+  index: /
+  port_map: "3000"
