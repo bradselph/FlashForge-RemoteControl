@@ -2,7 +2,7 @@ name: flashforge-remote-control
 
 services:
   flashforge-remote-control:
-    image: ghcr.io/susplayer32/flashforge-remote-control:latest
+    image: ghcr.io/bradselph/flashforge-remote-control:latest
     container_name: flashforge-remote-control
     restart: unless-stopped
     network_mode: host
@@ -16,9 +16,9 @@ x-casaos:
   main: flashforge-remote-control
   store_app_id: flashforge-remote-control
   category: Utilities
-  author: susplayer32
-  developer: susplayer32
-  icon: https://raw.githubusercontent.com/susplayer32/FlashForge-RemoteControl/master/public/icon.png
+  author: bradselph
+  developer: bradselph
+  icon: https://raw.githubusercontent.com/bradselph/FlashForge-RemoteControl/master/public/icon.png
   description:
     en_us: Web-based remote control panel for FlashForge 3D printers (AD5M, AD5X, Guider 4). Discovers printers on your LAN via UDP multicast, then controls them over TCP. Supports temperature monitoring, job control, LED, G-code console, and file management. Host networking is required for automatic printer discovery.
   tagline:
