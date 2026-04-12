@@ -581,30 +581,23 @@ app.get('/api/files/download', (req, res) => {
 });
 
 // ─── Camera Proxy ─────────────────────────────────────────────
-
 app.get('/api/camera/detect', async (req, res) => {
   if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
   const ip = connectedPrinter.ip;
 
-  // Each entry: probe URL to test, stream URL to return on success.
-  // Snapshot probes are preferred because they return a complete response.
-  // Stream probes are included as fallback — fetch() resolves once headers
-  // arrive (status code), before the body is read, so they work too.
-  const candidates = [
-    { probe: `http://${ip}:8080/?action=snapshot`, stream: `http://${ip}:8080/?action=stream` },
-    { probe: `http://${ip}:8080/?action=stream`,   stream: `http://${ip}:8080/?action=stream` },
-    { probe: `http://${ip}:8080/snapshot`,          stream: `http://${ip}:8080/stream` },
-    { probe: `http://${ip}:8080/stream`,            stream: `http://${ip}:8080/stream` },
-  ];
+  // Just check if port 8080 is open via TCP. HTTP-probing MJPEG streams with
+  // fetch() is unreliable — streams never complete so abort timeouts race with
+  // header delivery. If the port is open, the AD5X camera is there.
+  const portOpen = await new Promise(resolve => {
+    const sock = net.createConnection({ host: ip, port: 8080 });
+    sock.setTimeout(3000);
+    sock.once('connect', () => { sock.destroy(); resolve(true); });
+    sock.once('error',   () => resolve(false));
+    sock.once('timeout', () => { sock.destroy(); resolve(false); });
+  });
 
-  for (const { probe, stream } of candidates) {
-    try {
-      const r = await fetch(probe, { signal: AbortSignal.timeout(3000) });
-      if (r.ok) {
-        r.body?.cancel().catch(() => {});
-        return res.json({ success: true, url: stream });
-      }
-    } catch {}
+  if (portOpen) {
+    return res.json({ success: true, url: `http://${ip}:8080/?action=stream` });
   }
 
   res.json({ success: false, error: 'No camera found at known endpoints' });
@@ -613,7 +606,7 @@ app.get('/api/camera/detect', async (req, res) => {
 app.get('/api/camera/stream', (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).send('URL parameter required');
-
+  
   // Security: only allow proxying to the connected printer's IP
   try {
     const parsed = new URL(url);
