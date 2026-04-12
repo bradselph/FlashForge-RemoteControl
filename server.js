@@ -585,18 +585,21 @@ app.get('/api/files/download', (req, res) => {
 app.get('/api/camera/detect', async (req, res) => {
   if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
   const ip = connectedPrinter.ip;
-  const candidates = [
-    `http://${ip}:8080/?action=stream`,
-    `http://${ip}:8080/?action=snapshot`,
+
+  // Probe snapshot first — it returns a complete response quickly.
+  // Stream keeps the connection open indefinitely so fetch() never resolves cleanly.
+  const probeCandidates = [
+    { probe: `http://${ip}:8080/?action=snapshot`, stream: `http://${ip}:8080/?action=stream` },
+    { probe: `http://${ip}:8080/snapshot`, stream: `http://${ip}:8080/stream` },
   ];
 
-  for (const url of candidates) {
+  for (const { probe, stream } of probeCandidates) {
     try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      const r = await fetch(probe, { signal: AbortSignal.timeout(3000) });
       if (r.ok) {
-        // Prefer the stream URL if snapshot worked (same port, different action)
-        const streamUrl = `http://${ip}:8080/?action=stream`;
-        return res.json({ success: true, url: streamUrl });
+        // Drain body to free the connection, then return the stream URL
+        await r.body?.cancel();
+        return res.json({ success: true, url: stream });
       }
     } catch {}
   }
