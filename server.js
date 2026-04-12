@@ -586,19 +586,22 @@ app.get('/api/camera/detect', async (req, res) => {
   if (!connectedPrinter) return res.json({ success: false, error: 'Not connected' });
   const ip = connectedPrinter.ip;
 
-  // Probe snapshot first — it returns a complete response quickly.
-  // Stream keeps the connection open indefinitely so fetch() never resolves cleanly.
-  const probeCandidates = [
+  // Each entry: probe URL to test, stream URL to return on success.
+  // Snapshot probes are preferred because they return a complete response.
+  // Stream probes are included as fallback — fetch() resolves once headers
+  // arrive (status code), before the body is read, so they work too.
+  const candidates = [
     { probe: `http://${ip}:8080/?action=snapshot`, stream: `http://${ip}:8080/?action=stream` },
-    { probe: `http://${ip}:8080/snapshot`, stream: `http://${ip}:8080/stream` },
+    { probe: `http://${ip}:8080/?action=stream`,   stream: `http://${ip}:8080/?action=stream` },
+    { probe: `http://${ip}:8080/snapshot`,          stream: `http://${ip}:8080/stream` },
+    { probe: `http://${ip}:8080/stream`,            stream: `http://${ip}:8080/stream` },
   ];
 
-  for (const { probe, stream } of probeCandidates) {
+  for (const { probe, stream } of candidates) {
     try {
       const r = await fetch(probe, { signal: AbortSignal.timeout(3000) });
       if (r.ok) {
-        // Drain body to free the connection, then return the stream URL
-        await r.body?.cancel();
+        r.body?.cancel().catch(() => {});
         return res.json({ success: true, url: stream });
       }
     } catch {}
