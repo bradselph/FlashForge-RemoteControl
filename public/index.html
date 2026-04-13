@@ -2041,15 +2041,17 @@ function popOutCamera() {
   if (!cameraActive) return;
   const url = document.getElementById('camera-url').value;
   if (!url) return;
-  const proxyUrl = '/api/camera/stream?url=' + encodeURIComponent(url);
-  const w = window.open('', 'ff_camera', 'width=800,height=600');
+  // Must be absolute — the pop-out window starts as about:blank, so relative
+  // paths resolve against about:blank and never reach the proxy server.
+  const proxyUrl = location.origin + '/api/camera/stream?url=' + encodeURIComponent(url);
+  const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no,location=no');
   if (!w) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
-  // Write an HTML page so the browser renders the MJPEG stream properly
   w.document.write(`<!DOCTYPE html><html><head>
-    <title>Camera — FlashForge</title>
-    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100vh;object-fit:contain}</style>
+    <title>Camera \u2014 FlashForge</title>
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100vh;object-fit:contain}p{color:#888;font:14px sans-serif;padding:20px}</style>
   </head><body>
-    <img src="${proxyUrl}" alt="Camera stream" onerror="this.onerror=null;this.style.display='none';var p=document.createElement('p');p.style.cssText='color:#888;font:14px sans-serif;padding:20px';p.textContent='Stream unavailable';document.body.appendChild(p)">
+    <img src="${proxyUrl}" alt="Camera stream"
+      onerror="this.style.display='none';var p=document.createElement('p');p.textContent='Stream unavailable \u2014 check the camera URL and proxy connection';document.body.appendChild(p);this.onerror=null;">
   </body></html>`);
   w.document.close();
 }
