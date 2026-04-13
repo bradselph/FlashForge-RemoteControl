@@ -2050,37 +2050,25 @@ function popOutCamera() {
   // If already popped out, just focus it
   if (_popOutWin && !_popOutWin.closed) { _popOutWin.focus(); return; }
 
-  const img = document.getElementById('camera-stream');
   const placeholder = document.getElementById('camera-placeholder');
 
-  const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no,location=no,resizable=yes');
-  if (!w) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
-
-  // Build an absolute proxy URL anchored to the current page's origin so the
-  // pop-out (about:blank context) always requests from the right host/port.
   const rawUrl = _activeCameraUrl || document.getElementById('camera-url').value.trim();
   const proxyUrl = window.location.origin + '/api/camera/stream?url=' + encodeURIComponent(rawUrl);
 
-  w.document.write(`<!DOCTYPE html><html><head>
-    <title>Camera \u2014 FlashForge</title>
-    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100vh;object-fit:contain}</style>
-  </head><body><img src="${proxyUrl}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
-  w.document.close();
+  const w = window.open(proxyUrl, 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no,location=no,resizable=yes');
+  if (!w) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
   _popOutWin = w;
 
-  // Hide the main stream while the pop-out is open
-  img.style.display = 'none';
   placeholder.style.display = '';
   placeholder.innerHTML = 'Camera is popped out\u2003<a href="#" style="color:var(--accent)" ' +
     'onclick="if(_popOutWin&&!_popOutWin.closed)_popOutWin.focus();return false;">Focus window</a>';
 
-  // Poll for pop-out close and restart the stream in the main page
   _popOutPollInterval = setInterval(() => {
     if (w.closed) {
       clearInterval(_popOutPollInterval);
       _popOutPollInterval = null;
       _popOutWin = null;
-      if (_activeCameraUrl) startCamera(_activeCameraUrl);
+      placeholder.style.display = 'none';
     }
   }, 500);
 }
