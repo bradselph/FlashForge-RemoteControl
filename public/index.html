@@ -1691,6 +1691,7 @@ function deleteCustomCommand(index) {
 
 // ─── Camera ─────────────────────────────────────────────────────
 let cameraActive = false;
+let _activeCameraUrl = null; // raw URL passed to startCamera
 
 function setCameraUrl() {
   const url = document.getElementById('camera-url').value.trim();
@@ -1699,6 +1700,7 @@ function setCameraUrl() {
 }
 
 function startCamera(url) {
+  _activeCameraUrl = url;
   const img = document.getElementById('camera-stream');
   const placeholder = document.getElementById('camera-placeholder');
 
@@ -2049,40 +2051,36 @@ function popOutCamera() {
   if (_popOutWin && !_popOutWin.closed) { _popOutWin.focus(); return; }
 
   const img = document.getElementById('camera-stream');
-  const container = document.getElementById('camera-container');
   const placeholder = document.getElementById('camera-placeholder');
 
   const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no,location=no,resizable=yes');
   if (!w) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
 
+  // Build an absolute proxy URL anchored to the current page's origin so the
+  // pop-out (about:blank context) always requests from the right host/port.
+  const rawUrl = _activeCameraUrl || document.getElementById('camera-url').value.trim();
+  const proxyUrl = window.location.origin + '/api/camera/stream?url=' + encodeURIComponent(rawUrl);
+
   w.document.write(`<!DOCTYPE html><html><head>
     <title>Camera \u2014 FlashForge</title>
     <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100vh;object-fit:contain}</style>
-  </head><body></body></html>`);
+  </head><body><img src="${proxyUrl}" style="max-width:100%;max-height:100vh;object-fit:contain"></body></html>`);
   w.document.close();
   _popOutWin = w;
 
-  // Move the live <img> element into the pop-out — stream continues uninterrupted.
-  // adoptNode transfers the node without resetting src, so no reconnect happens.
-  const adopted = w.document.adoptNode(img);
-  w.document.body.appendChild(adopted);
-
-  // Show a placeholder in the main page while popped out
+  // Hide the main stream while the pop-out is open
+  img.style.display = 'none';
   placeholder.style.display = '';
   placeholder.innerHTML = 'Camera is popped out\u2003<a href="#" style="color:var(--accent)" ' +
     'onclick="if(_popOutWin&&!_popOutWin.closed)_popOutWin.focus();return false;">Focus window</a>';
 
-  // Poll for pop-out close and return the element when it happens
+  // Poll for pop-out close and restart the stream in the main page
   _popOutPollInterval = setInterval(() => {
     if (w.closed) {
       clearInterval(_popOutPollInterval);
       _popOutPollInterval = null;
       _popOutWin = null;
-      // Re-adopt back into main document (stream resumes in main page)
-      const returning = document.adoptNode(adopted);
-      returning.id = 'camera-stream';
-      container.insertBefore(returning, placeholder);
-      placeholder.style.display = 'none';
+      if (_activeCameraUrl) startCamera(_activeCameraUrl);
     }
   }, 500);
 }
