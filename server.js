@@ -863,6 +863,54 @@ app.get('/api/camera/detect', async (req, res) => {
   res.json({ success: false, error: 'No camera found' });
 });
 
+// ─── MJPEG Rebroadcaster ─────────────────────────────────────────
+// Holds one upstream connection to the camera and fans raw bytes out to all
+// connected clients.  Any number of remote viewers can subscribe without the
+// server opening extra connections to the camera.
+let _camReq = null;
+let _camUrl = null;
+let _camHeaders = null;
+const _camClients = new Set();
+
+function _camBroadcast(chunk) {
+  for (const client of _camClients) {
+    try { client.write(chunk); } catch { _camClients.delete(client); }
+  }
+}
+
+function _camTeardown() {
+  try { if (_camReq) _camReq.destroy(); } catch {}
+  _camReq = null;
+  _camUrl = null;
+  _camHeaders = null;
+  for (const client of _camClients) { try { client.end(); } catch {} }
+  _camClients.clear();
+}
+
+function _camStartUpstream(url) {
+  _camUrl = url;
+  _camReq = http.get(url, (upstream) => {
+    _camHeaders = {
+      'Content-Type': upstream.headers['content-type'] || 'multipart/x-mixed-replace',
+      'Cache-Control': 'no-cache, no-store',
+      'Connection': 'keep-alive',
+    };
+    // Send headers to any clients that joined before the upstream connected
+    for (const client of _camClients) {
+      if (!client.headersSent) client.writeHead(200, _camHeaders);
+    }
+    upstream.on('data', _camBroadcast);
+    upstream.on('end', _camTeardown);
+    upstream.on('error', _camTeardown);
+  });
+  _camReq.on('error', () => {
+    for (const client of _camClients) {
+      if (!client.headersSent) client.status(502).send('Camera connection failed');
+    }
+    _camTeardown();
+  });
+}
+
 app.get('/api/camera/stream', (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).send('URL parameter required');
@@ -873,16 +921,19 @@ app.get('/api/camera/stream', (req, res) => {
     }
   } catch { return res.status(400).send('Invalid URL'); }
 
-  const proxyReq = http.get(url, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, {
-      'Content-Type': proxyRes.headers['content-type'] || 'multipart/x-mixed-replace',
-      'Cache-Control': 'no-cache, no-store',
-      'Connection': 'keep-alive',
-    });
-    proxyRes.pipe(res);
+  // If the camera URL changed, drop the old upstream and reconnect
+  if (_camUrl && _camUrl !== url) _camTeardown();
+
+  // Register this client; send headers immediately if upstream is already live
+  _camClients.add(res);
+  if (_camHeaders) res.writeHead(200, _camHeaders);
+  req.on('close', () => {
+    _camClients.delete(res);
+    if (_camClients.size === 0) _camTeardown();
   });
-  proxyReq.on('error', () => { if (!res.headersSent) res.status(502).send('Camera connection failed'); });
-  req.on('close', () => proxyReq.destroy());
+
+  // Start upstream only when the first client arrives
+  if (!_camReq) _camStartUpstream(url);
 });
 
 app.get('/', (req, res) => {
