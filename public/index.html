@@ -1730,7 +1730,9 @@ async function detectCamera() {
     const data = await resp.json();
     if (data.success && data.url) {
       document.getElementById('camera-url').value = data.url;
-      startCamera(data.url);
+      // Only start the stream if not already streaming — re-calling startCamera
+      // resets img.src with a new cache-buster and kills the live connection.
+      if (!cameraActive) startCamera(data.url);
       toast('Camera detected', 'success');
     } else {
       toast('No camera detected at known endpoints', 'error');
@@ -2037,23 +2039,52 @@ function openCameraFullscreen() {
   else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
 }
 
+let _popOutWin = null;
+let _popOutPollInterval = null;
+
 function popOutCamera() {
   if (!cameraActive) return;
-  const url = document.getElementById('camera-url').value;
-  if (!url) return;
-  // Must be absolute — the pop-out window starts as about:blank, so relative
-  // paths resolve against about:blank and never reach the proxy server.
-  const proxyUrl = location.origin + '/api/camera/stream?url=' + encodeURIComponent(url);
-  const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no,location=no');
+
+  // If already popped out, just focus it
+  if (_popOutWin && !_popOutWin.closed) { _popOutWin.focus(); return; }
+
+  const img = document.getElementById('camera-stream');
+  const container = document.getElementById('camera-container');
+  const placeholder = document.getElementById('camera-placeholder');
+
+  const w = window.open('', 'ff_camera', 'width=800,height=600,menubar=no,toolbar=no,location=no,resizable=yes');
   if (!w) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
+
   w.document.write(`<!DOCTYPE html><html><head>
     <title>Camera \u2014 FlashForge</title>
-    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100vh;object-fit:contain}p{color:#888;font:14px sans-serif;padding:20px}</style>
-  </head><body>
-    <img src="${proxyUrl}" alt="Camera stream"
-      onerror="this.style.display='none';var p=document.createElement('p');p.textContent='Stream unavailable \u2014 check the camera URL and proxy connection';document.body.appendChild(p);this.onerror=null;">
-  </body></html>`);
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{background:#000;display:flex;align-items:center;justify-content:center;height:100vh}img{max-width:100%;max-height:100vh;object-fit:contain}</style>
+  </head><body></body></html>`);
   w.document.close();
+  _popOutWin = w;
+
+  // Move the live <img> element into the pop-out — stream continues uninterrupted.
+  // adoptNode transfers the node without resetting src, so no reconnect happens.
+  const adopted = w.document.adoptNode(img);
+  w.document.body.appendChild(adopted);
+
+  // Show a placeholder in the main page while popped out
+  placeholder.style.display = '';
+  placeholder.innerHTML = 'Camera is popped out\u2003<a href="#" style="color:var(--accent)" ' +
+    'onclick="if(_popOutWin&&!_popOutWin.closed)_popOutWin.focus();return false;">Focus window</a>';
+
+  // Poll for pop-out close and return the element when it happens
+  _popOutPollInterval = setInterval(() => {
+    if (w.closed) {
+      clearInterval(_popOutPollInterval);
+      _popOutPollInterval = null;
+      _popOutWin = null;
+      // Re-adopt back into main document (stream resumes in main page)
+      const returning = document.adoptNode(adopted);
+      returning.id = 'camera-stream';
+      container.insertBefore(returning, placeholder);
+      placeholder.style.display = 'none';
+    }
+  }, 500);
 }
   
 // ─── Load Currently-Printing File into 3D Viewer ────────────────
