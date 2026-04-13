@@ -157,7 +157,7 @@
     /* Status Card */
     .status-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
       gap: 12px;
     }
 
@@ -724,6 +724,59 @@
       vertical-align: middle;
       border-radius: 2px;
     }
+
+    /* Jog / motion control */
+    .jog-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(3, 52px);
+      gap: 6px;
+      justify-content: center;
+    }
+    .jog-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      padding: 0;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .jog-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .jog-dead { background: none; border: none; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim); }
+    .step-selector { display: flex; gap: 6px; justify-content: center; margin-top: 12px; align-items: center; }
+    .step-btn { padding: 4px 12px; font-size: 12px; background: var(--surface2); border: 1px solid var(--border); flex: none; }
+    .step-btn.active { background: var(--accent); border-color: var(--accent); }
+
+    /* Upload card */
+    .upload-options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .upload-option { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text); }
+    .upload-option input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; }
+    .upload-progress-wrap { display: none; margin-top: 12px; }
+    .upload-progress-bar { background: var(--surface2); border-radius: 8px; height: 8px; overflow: hidden; }
+    .upload-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); width: 0%; transition: width 0.3s; border-radius: 8px; }
+    .upload-progress-label { text-align: center; font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+
+    /* Status extras (door / error / filament) */
+    .status-extras { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; min-height: 0; }
+    .status-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .status-pill.warn { border-color: var(--yellow); color: var(--yellow); }
+    .status-pill.err { border-color: var(--red); color: var(--red); }
+    .status-pill.ok { border-color: var(--green); color: var(--green); }
   </style>
 </head>
 <body>
@@ -745,10 +798,12 @@
   <div id="discovery-panel">
     <h2>Connect to Printer</h2>
     <div class="discovery-row">
-      <input type="text" id="manual-ip" placeholder="Enter printer IP address (e.g. 192.168.1.100)">
+      <input type="text" id="manual-ip" placeholder="Printer IP address (e.g. 192.168.1.100)" style="flex:2;">
+      <input type="text" id="manual-checkcode" placeholder="Access code (optional)" style="flex:1;max-width:160px;" title="PIN shown on the printer touchscreen — needed for HTTP API on newer firmware">
       <button onclick="connectManual()">Connect</button>
       <button class="secondary" onclick="scanNetwork()">Scan Network</button>
     </div>
+    <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">Access code = PIN on the printer touchscreen. Required for HTTP API (port 8898) on newer firmware. Leave blank to use TCP-only mode.</div>
     <div id="printer-list" class="printer-list"></div>
   </div>
 
@@ -760,6 +815,7 @@
       <div class="card">
         <h3>Printer Status</h3>
         <span id="state-badge" class="state-badge state-ready">Ready</span>
+        <div class="status-extras" id="status-extras"></div>
         <div id="job-info" style="display:none;">
           <div class="job-name" id="job-name">-</div>
           <div class="progress-container">
@@ -797,6 +853,14 @@
               <span class="temp-current" id="bed-temp">--</span>
               <span class="temp-unit">&deg;C</span>
               <span class="temp-target" id="bed-target"></span>
+            </div>
+          </div>
+          <div class="stat" id="chamber-stat" style="display:none;">
+            <span class="stat-label">Chamber</span>
+            <div class="temp-display">
+              <span class="temp-current" id="chamber-temp">--</span>
+              <span class="temp-unit">&deg;C</span>
+              <span class="temp-target" id="chamber-target"></span>
             </div>
           </div>
         </div>
@@ -838,6 +902,57 @@
         <div class="toggle-row" style="margin-top:12px;">
           <span>LED Light</span>
           <div class="toggle" id="led-toggle" onclick="toggleLed()"></div>
+        </div>
+      </div>
+
+      <!-- Motion Control -->
+      <div class="card">
+        <h3>Motion Control</h3>
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+          <!-- XY jog -->
+          <div>
+            <div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:6px;">XY</div>
+            <div class="jog-grid">
+              <div></div>
+              <button class="jog-btn" onclick="moveAxis('Y', jogStep)" title="Y+">▲</button>
+              <div></div>
+              <button class="jog-btn" onclick="moveAxis('X', -jogStep)" title="X-">◀</button>
+              <div class="jog-dead">XY</div>
+              <button class="jog-btn" onclick="moveAxis('X', jogStep)" title="X+">▶</button>
+              <div></div>
+              <button class="jog-btn" onclick="moveAxis('Y', -jogStep)" title="Y-">▼</button>
+              <div></div>
+            </div>
+          </div>
+          <!-- Z jog -->
+          <div>
+            <div style="font-size:11px;color:var(--text-dim);text-align:center;margin-bottom:6px;">Z</div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+              <button class="jog-btn" onclick="moveAxis('Z', jogStep)" title="Z+">▲</button>
+              <div class="jog-dead">Z</div>
+              <button class="jog-btn" onclick="moveAxis('Z', -jogStep)" title="Z-">▼</button>
+            </div>
+          </div>
+          <!-- Extrude -->
+          <div style="flex:1;min-width:130px;">
+            <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Extrude / Retract</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+              <input type="number" id="extrude-amount" value="5" min="1" max="200" style="width:70px;">
+              <span style="color:var(--text-dim);font-size:13px;">mm</span>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="secondary" style="flex:1;font-size:13px;" onclick="extrudeFilament(1)">Extrude</button>
+              <button class="secondary" style="flex:1;font-size:13px;" onclick="extrudeFilament(-1)">Retract</button>
+            </div>
+          </div>
+        </div>
+        <div class="step-selector">
+          <span style="font-size:12px;color:var(--text-dim);">Step:</span>
+          <button class="step-btn" onclick="setJogStep(0.1)">0.1</button>
+          <button class="step-btn" onclick="setJogStep(1)">1</button>
+          <button class="step-btn active" onclick="setJogStep(10)">10</button>
+          <button class="step-btn" onclick="setJogStep(50)">50</button>
+          <span style="font-size:12px;color:var(--text-dim);">mm</span>
         </div>
       </div>
 
@@ -923,6 +1038,33 @@
         </div>
         <span class="cmd-ref-toggle" onclick="toggleCommandRef()">Command Reference</span>
         <div class="cmd-ref-list" id="cmd-ref-list"></div>
+      </div>
+
+      <!-- Upload File -->
+      <div class="card" style="grid-column: span 2;">
+        <h3>Upload File to Printer</h3>
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="flex:1;min-width:220px;">
+            <input type="file" id="upload-file-input" accept=".gcode,.gco,.3mf,.g"
+              style="display:block;width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;">
+            <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Accepts .gcode, .3mf files (HTTP API required)</div>
+          </div>
+          <div style="flex:1;min-width:200px;">
+            <div class="upload-options">
+              <label class="upload-option"><input type="checkbox" id="opt-print-now" checked> Start printing immediately</label>
+              <label class="upload-option"><input type="checkbox" id="opt-leveling"> Auto-level before print</label>
+              <label class="upload-option"><input type="checkbox" id="opt-flow-cal"> Flow calibration</label>
+              <label class="upload-option"><input type="checkbox" id="opt-timelapse"> Record time-lapse</label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button onclick="uploadFile()" style="width:100%;">Upload to Printer</button>
+        </div>
+        <div class="upload-progress-wrap" id="upload-progress-wrap">
+          <div class="upload-progress-bar"><div class="upload-progress-fill" id="upload-progress-fill"></div></div>
+          <div class="upload-progress-label" id="upload-progress-label">Uploading...</div>
+        </div>
       </div>
 
       <!-- Files -->
@@ -1019,12 +1161,15 @@ function onPrinterDisconnected() {
 
 async function connectManual() {
   const ip = document.getElementById('manual-ip').value.trim();
+  const checkCode = document.getElementById('manual-checkcode').value.trim();
   if (!ip) return;
   try {
+    const body = { ip };
+    if (checkCode) body.checkCode = checkCode;
     const resp = await fetch('/api/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip }),
+      body: JSON.stringify(body),
     });
     const data = await resp.json();
     if (!data.success) {
@@ -1069,11 +1214,14 @@ async function scanNetwork() {
 
 async function connectToPrinter(ip, serialNumber) {
   document.getElementById('manual-ip').value = ip;
+  const checkCode = document.getElementById('manual-checkcode').value.trim();
   try {
+    const body = { ip, serialNumber };
+    if (checkCode) body.checkCode = checkCode;
     const resp = await fetch('/api/connect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip, serialNumber }),
+      body: JSON.stringify(body),
     });
     const data = await resp.json();
     if (!data.success) {
@@ -1101,9 +1249,31 @@ function updateStatus(s) {
   document.getElementById('bed-temp').textContent = Math.round(s.bedTemp);
   document.getElementById('bed-target').textContent = s.bedTarget > 0 ? `/ ${Math.round(s.bedTarget)}` : '';
 
+  // Chamber temp (only shown when HTTP API provides it)
+  if (s.chamberTemp !== undefined && s.chamberTemp !== null) {
+    document.getElementById('chamber-stat').style.display = '';
+    document.getElementById('chamber-temp').textContent = Math.round(s.chamberTemp);
+    document.getElementById('chamber-target').textContent = s.chamberTarget > 0 ? `/ ${Math.round(s.chamberTarget)}` : '';
+  }
+
   // Colorize
   document.getElementById('nozzle-temp').className = 'temp-current ' + (s.nozzleTemp > 50 ? 'temp-hot' : 'temp-cold');
   document.getElementById('bed-temp').className = 'temp-current ' + (s.bedTemp > 40 ? 'temp-hot' : 'temp-cold');
+
+  // Status extras: door, error, filament types
+  const extras = document.getElementById('status-extras');
+  const pills = [];
+  if (s.doorOpen !== undefined) {
+    const cls = s.doorOpen ? 'warn' : 'ok';
+    pills.push(`<span class="status-pill ${cls}">Door: ${s.doorOpen ? 'Open' : 'Closed'}</span>`);
+  }
+  if (s.errorCode && s.errorCode !== '0' && s.errorCode !== 0) {
+    pills.push(`<span class="status-pill err">Error: ${s.errorCode}</span>`);
+  }
+  if (s.rightFilamentType) pills.push(`<span class="status-pill">R: ${s.rightFilamentType}</span>`);
+  if (s.leftFilamentType) pills.push(`<span class="status-pill">L: ${s.leftFilamentType}</span>`);
+  if (s.tvoc) pills.push(`<span class="status-pill">TVOC: ${s.tvoc}</span>`);
+  extras.innerHTML = pills.join('');
 
   // Job info
   const jobInfo = document.getElementById('job-info');
@@ -1116,8 +1286,9 @@ function updateStatus(s) {
     document.getElementById('progress-pct').textContent = s.progress + '%';
 
     document.getElementById('job-layer').textContent = `${s.currentLayer} / ${s.totalLayers}`;
-    document.getElementById('job-elapsed').textContent = s.moveMode || '--';
-    document.getElementById('job-remaining').textContent = s.endstops || '--';
+    // Use duration/estimateTime from HTTP API when available, fall back to TCP fields
+    document.getElementById('job-elapsed').textContent = s.duration ? formatTime(s.duration) : (s.moveMode || '--');
+    document.getElementById('job-remaining').textContent = s.estimateTime ? formatTime(s.estimateTime) : (s.endstops || '--');
   } else {
     jobInfo.style.display = 'none';
   }
@@ -1986,6 +2157,100 @@ function checkPrintCompletion(state) {
     } catch {}
   }
   prevPrintState = state;
+}
+
+// ─── Motion Control ─────────────────────────────────────────────
+let jogStep = 10;
+
+function setJogStep(step) {
+  jogStep = step;
+  document.querySelectorAll('.step-btn').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.textContent) === step);
+  });
+}
+
+async function moveAxis(axis, delta) {
+  const resp = await fetch('/api/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ axis, delta }),
+  });
+  const data = await resp.json();
+  if (!data.success) toast(`Move ${axis} failed: ${data.error}`, 'error');
+}
+
+async function extrudeFilament(direction) {
+  const amount = parseFloat(document.getElementById('extrude-amount').value) || 5;
+  const resp = await fetch('/api/extrude', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: amount * direction }),
+  });
+  const data = await resp.json();
+  if (!data.success) toast(`Extrude failed: ${data.error}`, 'error');
+}
+
+// ─── File Upload ─────────────────────────────────────────────────
+async function uploadFile() {
+  const fileInput = document.getElementById('upload-file-input');
+  const file = fileInput.files[0];
+  if (!file) return toast('Select a file first', 'error');
+  if (!printer) return toast('Not connected to a printer', 'error');
+
+  const printNow = document.getElementById('opt-print-now').checked ? 1 : 0;
+  const leveling = document.getElementById('opt-leveling').checked ? 1 : 0;
+  const flowCal = document.getElementById('opt-flow-cal').checked ? 1 : 0;
+  const timelapse = document.getElementById('opt-timelapse').checked ? 1 : 0;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('printNow', printNow);
+  formData.append('levelingBeforePrint', leveling);
+  formData.append('flowCalibration', flowCal);
+  formData.append('timeLapseVideo', timelapse);
+
+  const progressWrap = document.getElementById('upload-progress-wrap');
+  const progressFill = document.getElementById('upload-progress-fill');
+  const progressLabel = document.getElementById('upload-progress-label');
+  progressWrap.style.display = '';
+  progressFill.style.width = '0%';
+  progressLabel.textContent = `Uploading ${file.name}…`;
+
+  try {
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          progressFill.style.width = pct + '%';
+          const mb = (n) => (n / 1024 / 1024).toFixed(1) + ' MB';
+          progressLabel.textContent = `Uploading… ${pct}% (${mb(e.loaded)} / ${mb(e.total)})`;
+        }
+      };
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            progressFill.style.width = '100%';
+            progressLabel.textContent = 'Upload complete!';
+            toast('File uploaded' + (printNow ? ' — printing started' : ''), 'success');
+            resolve(data);
+          } else {
+            reject(new Error(data.error || 'Upload failed'));
+          }
+        } catch (e) { reject(e); }
+      };
+      xhr.onerror = () => reject(new Error('Upload request failed'));
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+    });
+  } catch (err) {
+    progressFill.style.width = '0%';
+    progressLabel.textContent = 'Upload failed: ' + err.message;
+    toast('Upload failed: ' + err.message, 'error');
+  }
+
+  setTimeout(() => { progressWrap.style.display = 'none'; }, 4000);
 }
 
 // ─── Init ──────────────────────────────────────────────────────

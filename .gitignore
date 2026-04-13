@@ -1,3 +1,8 @@
 node_modules/
 package-lock.json
 .env
+
+# Machine logs — contain captured NIM credentials, printer serial numbers,
+# account IDs, and other sensitive protocol data extracted from the local install.
+# Never commit these; share findings manually via FINDINGS.md if needed.
+machine-logs/
